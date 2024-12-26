@@ -2,7 +2,7 @@
 // 경로: src/common/enums/auth-provider.enum.ts
 
 export enum AuthProvider {
-  LOCAL = 'local',
+  LOCAL = 'email',
   GOOGLE = 'google',
   KAKAO = 'kakao',
   NAVER = 'naver'
