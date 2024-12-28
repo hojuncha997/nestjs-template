@@ -12,3 +12,4 @@ export * from './language.enum';
 export * from './time-zone.enums';
 export * from './theme.enum';
 export * from './member-status.enum';
+export * from './client-type.enum';

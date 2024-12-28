@@ -13,8 +13,8 @@ import { getTypeOrmConfig } from './config/typeorm.config';
   imports: [
     // 환경 변수 설정
     ConfigModule.forRoot({
+      envFilePath: ['.env.local', '.env'],
       isGlobal: true,
-      envFilePath: `.env.${process.env.NODE_ENV}`,
       load: [databaseConfig],
     }),
     // TypeORM 설정

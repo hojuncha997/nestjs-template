@@ -16,17 +16,25 @@
 
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { Member } from '../members/entities/member.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 // TypeORM 관련 설정만 관리
-export const getTypeOrmConfig = (configService: ConfigService): TypeOrmModuleOptions => {
+export const getTypeOrmConfig = async (
+    configService: ConfigService,
+): Promise<TypeOrmModuleOptions> => {
     const dbConfig = configService.get('database');
 
     return {
         // 데이터베이스 설정
         ...dbConfig,
         // 엔티티 경로  
-        entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+        entities: [
+            __dirname + '/../**/*.entity{.ts,.js}',
+            Member,
+            RefreshToken,
+        ],
         // 개발 환경에서만 동기화 활성화
         synchronize: process.env.NODE_ENV !== 'production',
         // 모든 테이블 이름을 스네이크 케이스로 변환

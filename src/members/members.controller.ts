@@ -13,18 +13,33 @@ import {
   Query,
   HttpStatus,
   HttpCode,
-  ParseUUIDPipe
+  ParseUUIDPipe,
+  UseGuards,
+  Request
 } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { MemberResponseDto } from './dto/member-response.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('members')
 @Controller('members')
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '내 정보 조회 성공', 
+    type: MemberResponseDto 
+  })
+  async getProfile(@Request() req) {
+    return this.membersService.findOneByUuid(req.user.uuid);
+  }
 
   /**
    * 회원 생성
@@ -102,7 +117,7 @@ export class MembersController {
   })
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('uuid', ParseUUIDPipe) uuid: string): Promise<void> {
-    await this.membersService.softDelete(uuid);
+    await this.membersService.withdrawMember(uuid);
   }
 
   /**
@@ -154,4 +169,5 @@ export class MembersController {
   ): Promise<MemberResponseDto> {
     return this.membersService.updatePoints(uuid, pointType, amount);
   }
+
 } 

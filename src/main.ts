@@ -4,7 +4,7 @@
 
 // 유효성 검사 파이프 추가
 import { ValidationPipe } from '@nestjs/common';
-
+import * as cookieParser from 'cookie-parser';
 
 import { NestFactory } from '@nestjs/core';
 // Swagger 모듈 추가
@@ -21,6 +21,7 @@ async function bootstrap() {
   });
   
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, // DTO에 정의되지 않은 속성은 제거
@@ -30,8 +31,16 @@ async function bootstrap() {
   
   // CORS 허용
   app.enableCors({
-      // origin: true로 설정하면 모든 도메인에서의 요청을 허용
-  // 실제 운영 환경에서는 특정 도메인만 허용하도록 설정해야 함
+    origin: true, // 또는 특정 도메인 'http://localhost:3000'
+    credentials: true, // 쿠키 전송을 위해 필요
+    exposedHeaders: ['set-cookie'], // 쿠키 헤더 노출
+    /*
+    브라우저는 CORS 정책에 따라 쿠키를 처리
+    하지만 CORS 설정에 credentials: true가 없으면:
+    브라우저가 다른 도메인의 쿠키를 수락하지 않음
+    Set-Cookie 헤더가 무시됨
+    결과적으로 리프레시 토큰이 저장되지 않음
+    */
   });
   
   // 전역 경로 설정: 경로 앞에 /api/v1 붙이기
@@ -56,16 +65,19 @@ async function bootstrap() {
     .addTag('auth', '인증 관련 API') // 태그 추가
     .addTag('members', '회원 관리 API') // 태그 추가
     .addTag('email', '이메일 관련 API') // 태그 추가
+    .addCookieAuth('refresh_token') // 쿠키 인증 토큰 추가
     .build(); // 문서 빌드
 
   const document = SwaggerModule.createDocument(app, config); // Swagger 문서 생성
   SwaggerModule.setup('api-docs', app, document, { // Swagger 문서 설정
     swaggerOptions: {
-      persistAuthorization: true, // 인증 토큰 유지
+      persistAuthorization: true,
+      withCredentials: true,
     },
   });
 
-
+  console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+  
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

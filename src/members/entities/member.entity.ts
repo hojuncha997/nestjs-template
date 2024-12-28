@@ -13,7 +13,8 @@ import {
    Column,
    CreateDateColumn,
    UpdateDateColumn,
-   DeleteDateColumn
+   DeleteDateColumn,
+   OneToMany
 } from 'typeorm';
 
 import { 
@@ -24,6 +25,8 @@ import {
    Theme,
    MemberStatus
 } from '@common/enums';
+
+import { RefreshToken } from '@auth/entities/refresh-token.entity';
 
 @Entity('members')
 export class Member {
@@ -80,7 +83,7 @@ export class Member {
    @Column({
     //    name: 'provider',
        type: 'enum',
-       enum: AuthProvider  // ���체를 전달해줘도 내부적으로는 문자열 배열로 처리됨
+       enum: AuthProvider  // 겍체를 전달해줘도 내부적으로는 문자열 배열로 처리됨
    })
    provider: AuthProvider;
 
@@ -129,27 +132,13 @@ export class Member {
     *  예를 들어 비밀번호 변경 시 모든 토큰을 무효화하는 경우
     *  또는 회원 탈퇴 시 모든 토큰을 무효화하는 경우
     *  또는 관리자가 특정 사용자의 모든 세션을 강제 로그아웃 시키는 경우
-    *  토큰 탈���가 의심되는 경우
+    *  토큰 탈가 의심되는 경우
     */
    @Column({ 
     //    name: 'token_version',
        default: 0 
    })
    tokenVersion: number;  // 토큰 무효화를 위한 버전 관리
-
-   @Column({ 
-    //    name: 'refresh_token',
-       nullable: true,
-       select: false  // refreshToken도 민감 정보이므로 select false 추가
-   })
-   refreshToken?: string;
-
-   @Column({ 
-    //    name: 'refresh_token_expires_at',
-       type: 'timestamp', 
-       nullable: true 
-   })
-   refreshTokenExpiresAt?: Date;  // 리프레시 토큰 만료 시간
 
    @Column({ 
     //    name: 'login_attempts',
@@ -322,7 +311,7 @@ export class Member {
 
    /**
     * 알림 설정
-    * 계산된 속성명(Computed Property): 변수/함수/enum 등의 변수 수 있는 값을 객체의 'key'로 쓸 때만 [](대괄호)로 감싸야 함
+    * 계산된 속성명(Computed Property): 변수/함수/enum 등의 변수 수 있는 값을 객체 'key'로 쓸 때만 [](대괄호)로 감싸야 함
     */
    @Column('jsonb', {
     //    name: 'notification_settings',
@@ -431,5 +420,8 @@ export class Member {
        level: number;
        experience: number;
    };
+
+   @OneToMany(() => RefreshToken, refreshToken => refreshToken.member)
+   refreshTokens: RefreshToken[];
 
 }
