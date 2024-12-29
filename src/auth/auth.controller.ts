@@ -47,7 +47,7 @@ export class AuthController {
    @Res({ passthrough: true }) response: Response,
    @Body() loginDto: LocalLoginDto,
  ) {
-   return this.authService.signIn(req.user, response, loginDto.clientType);
+   return this.authService.localLogin(req.user, response, loginDto.clientType);
  }
 
  @Post('social/login')

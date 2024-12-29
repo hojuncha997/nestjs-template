@@ -4,8 +4,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Member } from '@members/entities/member.entity';
 import { RefreshToken } from '@auth/entities/refresh-token.entity';
-import { Response } from 'express';
-import { TokenRevokeReason } from '@common/enums/token-revoke-reason.enum';
 
 @Injectable()
 export class AuthRepository {
@@ -156,7 +154,8 @@ export class AuthRepository {
          language: true,
          timezone: true,
          theme: true
-       }
+       },
+       tokenVersion: true
      }
    });
  }

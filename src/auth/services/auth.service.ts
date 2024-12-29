@@ -7,7 +7,6 @@ import { ClientType } from '@common/enums/client-type.enum';
 import { AuthRepository } from '../repositories/auth.repository';
 import { MembersService } from '@members/members.service';
 import { Member } from '@members/entities/member.entity';
-import { MembersRepository } from '@members/repositories/members.repository';
 
 export class RefreshTokenExpiredException extends UnauthorizedException {
   constructor() {
@@ -26,6 +25,7 @@ interface AuthUser {
   uuid: string;
   email: string;
   role: string;
+  tokenVersion: number;
   preferences: {
     language: string;
     timezone: string;
@@ -42,6 +42,7 @@ interface JwtPayload {
     timezone: string;
     theme: string;
   };
+  tokenVersion: number;
 }
 
 @Injectable()
@@ -52,7 +53,7 @@ export class AuthService {
     private readonly membersService: MembersService,
   ) {}
 
-  async signIn(member: Member, response: Response, clientType: ClientType) {
+  async localLogin(member: Member, response: Response, clientType: ClientType) {
     const user: AuthUser = {
       id: member.id,
       uuid: member.uuid,
@@ -62,7 +63,8 @@ export class AuthService {
         language: 'ko',
         timezone: 'Asia/Seoul',
         theme: 'light'
-      }
+      },
+      tokenVersion: member.tokenVersion || 0,
     };
 
     const tokens = await this.login(user, clientType);
@@ -85,7 +87,8 @@ export class AuthService {
       email: user.email, 
       sub: user.uuid,
       role: user.role,
-      preferences: user.preferences
+      preferences: user.preferences,
+      tokenVersion: user.tokenVersion,
     };
     
     console.log('Login attempt for user:', { id: user.id, email: user.email });
@@ -140,7 +143,8 @@ export class AuthService {
       email: tokenData.member.email, 
       sub: tokenData.member.uuid,
       role: tokenData.member.role,
-      preferences: tokenData.member.preferences
+      preferences: tokenData.member.preferences,
+      tokenVersion: tokenData.member.tokenVersion,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
@@ -184,6 +188,8 @@ export class AuthService {
 
   async validateMember(email: string, password: string): Promise<AuthUser | null> {
     const user = await this.authRepository.findByEmail(email);
+    console.log('DB에서 조회된 사용자 정보:', user);
+    
     if (!user) return null;
 
     // 계정 잠금 확인
@@ -199,7 +205,7 @@ export class AuthService {
 
     await this.membersService.resetLoginAttempts(email);
     
-    return {
+    const authUser = {
       id: user.id,
       uuid: user.uuid,
       email: user.email,
@@ -208,7 +214,11 @@ export class AuthService {
         language: 'ko',
         timezone: 'Asia/Seoul',
         theme: 'light'
-      }
+      },
+      tokenVersion: user.tokenVersion || 0,
     };
+    
+    console.log('반환되는 AuthUser:', authUser);
+    return authUser;
   }
 } 
