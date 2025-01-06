@@ -106,7 +106,7 @@ async refresh(
   console.log('clientType:', clientType);
   console.log('cookieToken:', cookieToken);
   console.log('--------------------------------');
-
+//액세스 토큰을 빼먹었음. 추가해 줘야함.
   let refreshToken = cookieToken;
   
   if (!refreshToken && authHeader) {// 쿠키에 없으면 헤더에서 찾음

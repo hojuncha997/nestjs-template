@@ -221,4 +221,9 @@ export class AuthService {
     console.log('반환되는 AuthUser:', authUser);
     return authUser;
   }
+
+  async findMemberByUuid(uuid: string) {
+    // return this.authRepository.findByUuid(uuid);
+    return this.membersService.findOneByUuid(uuid);
+  }
 } 

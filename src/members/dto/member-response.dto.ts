@@ -5,6 +5,7 @@ import { MemberStatus } from "@common/enums";
 export class MemberResponseDto {
     uuid: string;              // 외부 노출용 식별자
     email: string;             // 이메일
+    tokenVersion: number;      // 토큰 버전
     name?: string;             // 이름 (선택)
     nickname?: string;         // 닉네임 (선택)
     phoneNumber?: string;      // 전화번호 (선택)

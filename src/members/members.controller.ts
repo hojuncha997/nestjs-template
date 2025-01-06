@@ -23,7 +23,6 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 import { MemberResponseDto } from './dto/member-response.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
 @ApiTags('members')
 @Controller('members')
 export class MembersController {

@@ -10,10 +10,12 @@ export class AuthResponseInterceptor implements NestInterceptor {
       map(data => {
         const request = context.switchToHttp().getRequest();
         const response = context.switchToHttp().getResponse();
-        const clientType = request.body.clientType;
+        const clientType = request.body.clientType || request.headers['x-client-type'];
+        // const clientType = request.body.clientType;
 
         if (clientType === ClientType.WEB) {
           if (data.refresh_token) {
+        
             response.cookie('refresh_token', data.refresh_token, {
               httpOnly: true,
               secure: true,

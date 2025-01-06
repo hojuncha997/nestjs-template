@@ -1,8 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { MembersService } from '../../members/members.service';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {} 
+export class JwtAuthGuard extends AuthGuard('jwt') {}
+
+// export class JwtAuthGuard extends AuthGuard('jwt') {
+//   constructor(private membersService: MembersService) {
+//     super();
+//   }
+
+//   async canActivate(context: ExecutionContext): Promise<boolean> {
+//     // 기본 JWT 검증
+//     const result = (await super.canActivate(context)) as boolean;
+//     if (!result) {
+//       return false;
+//     }
+//     //jwt.strategy.ts에서 추출된 정보
+//     const request = context.switchToHttp().getRequest();
+//     console.log('--------------------------------request:', request);
+//     const user = request.user;  // JWT payload에서 추출된 정보
+
+//     // DB에서 현재 회원의 토큰 버전 조회 및 검증
+//     // const member = await this.authService.findMemberByUuid(user.sub);
+//     const member = await this.membersService.findOneByUuid(user.uuid);
+//     console.log('--------------------------------member:', member);
+//     if (!member || member.tokenVersion !== user.tokenVersion) {
+//         console.log('--------------------------------member.tokenVersion:', member.tokenVersion);
+//         console.log('--------------------------------user.tokenVersion:', user.tokenVersion);
+//         console.log('--------------------------------user:', user);
+
+//       throw new UnauthorizedException('토큰이 더 이상 유효하지 않습니다.');
+//     }
+
+//     return true;
+//   }
+// } 
 
 
 /**

@@ -14,6 +14,7 @@ export class MemberMapper {
     const dto = new MemberResponseDto();
     dto.uuid = member.uuid;
     dto.email = member.email;
+    dto.tokenVersion = member.tokenVersion;
     dto.name = member.name;
     dto.nickname = member.nickname;
     dto.phoneNumber = member.phoneNumber;
