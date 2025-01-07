@@ -36,6 +36,8 @@ export class AuthRepository {
        'refreshToken.revoked',
        'refreshToken.revokedAt',
        'refreshToken.createdAt',
+       'refreshToken.keepLoggedIn',
+       'refreshToken.tokenVersion',
        'member.id',
        'member.uuid',
        'member.email',
@@ -45,7 +47,7 @@ export class AuthRepository {
      .getOne();
  }
 
- async saveRefreshToken(memberId: number, token: string): Promise<void> {
+ async saveRefreshToken(memberId: number, token: string, keepLoggedIn: boolean): Promise<void> {
    console.log('Starting saveRefreshToken process for member:', memberId);
    
    await this.refreshTokenRepository.manager.transaction(async transactionalEntityManager => {
@@ -73,6 +75,7 @@ export class AuthRepository {
        }
      );
      console.log('Revoked existing tokens:', updateResult.affected);
+     console.log('keepLoggedIn from repository:', keepLoggedIn);
 
      // 새 토큰 저장
      const tokenEntity = new RefreshToken();
@@ -80,8 +83,10 @@ export class AuthRepository {
      tokenEntity.memberId = memberId;
      tokenEntity.member = member;
      tokenEntity.tokenVersion = member.tokenVersion;
-     tokenEntity.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+     tokenEntity.keepLoggedIn = keepLoggedIn;
+     tokenEntity.expiresAt = new Date(Date.now() + (keepLoggedIn ? 7 * 24 * 60 * 60 * 1000 : 1 * 24 * 60 * 60 * 1000));
 
+     console.log('tokenEntity from repository:', tokenEntity);
      const saved = await transactionalEntityManager.save(RefreshToken, tokenEntity);
      console.log('New token saved with ID:', saved.id);
 
@@ -102,6 +107,7 @@ export class AuthRepository {
        id: verify?.id,
        memberId: verify?.memberId,
        memberExists: !!verify?.member,
+       keepLoggedIn: keepLoggedIn,
        memberInfo: verify?.member ? {
          id: verify.member.id,
          email: verify.member.email

@@ -13,6 +13,9 @@ export class RefreshToken {
   @Index()
   token: string;
 
+  @Column({ default: false })
+  keepLoggedIn: boolean;
+
   @Column()
   @Index()  // memberId에 대한 인덱스 추가
   memberId: number;

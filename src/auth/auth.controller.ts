@@ -47,7 +47,8 @@ export class AuthController {
    @Res({ passthrough: true }) response: Response,
    @Body() loginDto: LocalLoginDto,
  ) {
-   return this.authService.localLogin(req.user, response, loginDto.clientType);
+  console.log('loginDto!!!!!!!s:', loginDto);
+   return this.authService.localLogin(req.user, response, loginDto.clientType, loginDto.keepLoggedIn);
  }
 
  @Post('social/login')
@@ -106,7 +107,6 @@ async refresh(
   console.log('clientType:', clientType);
   console.log('cookieToken:', cookieToken);
   console.log('--------------------------------');
-//액세스 토큰을 빼먹었음. 추가해 줘야함.
   let refreshToken = cookieToken;
   
   if (!refreshToken && authHeader) {// 쿠키에 없으면 헤더에서 찾음
@@ -120,7 +120,9 @@ async refresh(
     throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
   }
 
-  return this.authService.refreshAccessToken(refreshToken, clientType);
+  const result = await this.authService.refreshAccessToken(refreshToken, clientType);
+  console.log('result:', result);
+  return result;
 }
 
  @Post('logout')

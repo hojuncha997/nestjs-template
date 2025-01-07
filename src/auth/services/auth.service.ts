@@ -43,6 +43,7 @@ interface JwtPayload {
     theme: string;
   };
   tokenVersion: number;
+  keepLoggedIn: boolean;
 }
 
 @Injectable()
@@ -53,7 +54,7 @@ export class AuthService {
     private readonly membersService: MembersService,
   ) {}
 
-  async localLogin(member: Member, response: Response, clientType: ClientType) {
+  async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
     const user: AuthUser = {
       id: member.id,
       uuid: member.uuid,
@@ -67,28 +68,29 @@ export class AuthService {
       tokenVersion: member.tokenVersion || 0,
     };
 
-    const tokens = await this.login(user, clientType);
+    const tokens = await this.login(user, clientType, keepLoggedIn);
     
     return tokens;
   }
 
-  private setRefreshTokenCookie(response: Response, token: string): void {
-    response.cookie('refresh_token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
-    });
-  }
+  // private setRefreshTokenCookie(response: Response, token: string): void {
+  //   response.cookie('refresh_token', token, {
+  //     httpOnly: true,
+  //     secure: true,
+  //     sameSite: 'lax',
+  //     path: '/',
+  //     maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+  //   });
+  // }
 
-  private async login(user: AuthUser, clientType: ClientType) {
+  private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
     const payload: JwtPayload = { 
       email: user.email, 
       sub: user.uuid,
       role: user.role,
       preferences: user.preferences,
       tokenVersion: user.tokenVersion,
+      keepLoggedIn: keepLoggedIn, // 추가
     };
     
     console.log('Login attempt for user:', { id: user.id, email: user.email });
@@ -97,13 +99,15 @@ export class AuthService {
       expiresIn: '15m',
     });
     const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
+      
+      // expiresIn: '7d',\
+      expiresIn: keepLoggedIn ? '7d' : '24h',  // keepLoggedIn에 따라 만료 시간 설정    });
     });
 
     console.log('Generated tokens. RefreshToken:', refreshToken.substring(0, 20) + '...');
     
     try {
-      await this.authRepository.saveRefreshToken(user.id, refreshToken);
+      await this.authRepository.saveRefreshToken(user.id, refreshToken, keepLoggedIn);
       console.log('Refresh token saved successfully');
     } catch (error) {
       console.error('Error saving refresh token:', error);
@@ -113,6 +117,7 @@ export class AuthService {
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
+      keepLoggedIn: keepLoggedIn,
     };
   }
 
@@ -144,23 +149,28 @@ export class AuthService {
       sub: tokenData.member.uuid,
       role: tokenData.member.role,
       preferences: tokenData.member.preferences,
-      tokenVersion: tokenData.member.tokenVersion,
+      tokenVersion: tokenData.tokenVersion,
+      keepLoggedIn: tokenData.keepLoggedIn,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
     });
     const newRefreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
+      // expiresIn: '7d',
+      expiresIn: tokenData.keepLoggedIn ? '7d' : '24h',
     });
 
     // 기존 토큰 무효화하고 새 토큰 저장
     await this.authRepository.revokeRefreshToken(refreshToken);
-    await this.authRepository.saveRefreshToken(tokenData.member.id, newRefreshToken);
+    await this.authRepository.saveRefreshToken(tokenData.member.id, newRefreshToken, tokenData.keepLoggedIn);
+
+    console.log('tokenData.keepLoggedIn:', tokenData.keepLoggedIn);
 
     return {
       access_token: accessToken,
       refresh_token: newRefreshToken,
+      keepLoggedIn: tokenData.keepLoggedIn,
     };
   }
 
