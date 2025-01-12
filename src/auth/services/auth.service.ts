@@ -31,6 +31,7 @@ interface AuthUser {
     timezone: string;
     theme: string;
   };
+  status: string;
 }
 
 interface JwtPayload {
@@ -65,6 +66,7 @@ export class AuthService {
         timezone: 'Asia/Seoul',
         theme: 'light'
       },
+      status: member.status,
       tokenVersion: member.tokenVersion || 0,
     };
 
@@ -225,6 +227,7 @@ export class AuthService {
         timezone: 'Asia/Seoul',
         theme: 'light'
       },
+      status: user.status ,
       tokenVersion: user.tokenVersion || 0,
     };
     

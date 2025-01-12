@@ -121,7 +121,7 @@ async refresh(
   }
 
   const result = await this.authService.refreshAccessToken(refreshToken, clientType);
-  console.log('result:', result);
+  // console.log('result:', result);
   return result;
 }
 
