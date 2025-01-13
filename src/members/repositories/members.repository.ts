@@ -76,12 +76,29 @@ export class MembersRepository {
 
   // 이메일 인증 토큰으로 멤버 조회 (이메일 인증 시 사용)
   async findOneByVerificationToken(token: string): Promise<Member | null> {
-    return this.memberRepository.findOne({
+    const member = await this.memberRepository.findOne({
       where: { 
         verificationToken: token,
         status: MemberStatus.PENDING
+      },
+      select: {
+        id: true,
+        uuid: true,
+        email: true,
+        verificationToken: true,  
+        verificationTokenExpiresAt: true,
+        status: true,
+        notificationSettings: {
+          //jsonb형식이기 때문에 이처럼 객체형태로 명시해 줘야함. 단순히 notificationSettings: true 로 하면 에러 발생
+          email: true,
+          // push: true,
+          // sms: true,
+          // marketing: true,
+          // inApp: true
+        }
       }
     });
+    return member;
   }
 
   // 로그인 시도 횟수 업데이트

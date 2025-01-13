@@ -130,7 +130,7 @@ export class MembersController {
     type: MemberResponseDto 
   })
   async verifyEmail(
-    @Query('token') token: string
+    @Body('token') token: string
   ): Promise<MemberResponseDto> {
     return this.membersService.verifyEmail(token);
   }

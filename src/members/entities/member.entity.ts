@@ -260,7 +260,7 @@ export class Member {
    @Column({ 
     //    name: 'verification_token',
        nullable: true, 
-       select: false 
+       select: false  // 기본 쿼리에서 제외됨
    })
    verificationToken?: string;
 
