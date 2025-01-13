@@ -14,34 +14,52 @@ interface EmailOptions {
 export class EmailService {
   private transporter: nodemailer.Transporter;
 
+  // constructor() {
+  //   // 개발 환경용 테스트 계정 생성
+  //   nodemailer.createTestAccount().then(account => {
+  //     this.transporter = nodemailer.createTransport({
+  //       host: account.smtp.host,
+  //       port: account.smtp.port,
+  //       secure: account.smtp.secure,
+  //       auth: {
+  //         user: account.user,
+  //         pass: account.pass,
+  //       },
+  //     });
+  //   });
+  // }
+
+
+
   constructor() {
-    // 개발 환경용 테스트 계정 생성
-    nodemailer.createTestAccount().then(account => {
-      this.transporter = nodemailer.createTransport({
-        host: account.smtp.host,
-        port: account.smtp.port,
-        secure: account.smtp.secure,
-        auth: {
-          user: account.user,
-          pass: account.pass,
-        },
-      });
+    // Gmail 전송 설정
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      },
     });
   }
+  
+
+
 
   async send(options: EmailOptions): Promise<void> {
-    // 템플릿 렌더링 (예시)
     const html = `
       <h1>이메일 인증</h1>
       <p>안녕하세요 ${options.context.name}님,</p>
       <p>아래 링크를 클릭하여 이메일 인증을 완료해주세요:</p>
-      <a href="${options.context.verificationLink}">이메일 인증하기</a>
+      <a href="${options.context.verificationLink}" target="_blank" rel="noopener noreferrer">이메일 인증하기</a>
       <p>이 링크는 ${options.context.expiresIn} 동안 유효합니다.</p>
     `;
 
+    // 디버깅을 위한 로그
+    console.log('Verification Link:', options.context.verificationLink);
+
     // 이메일 발송
     const info = await this.transporter.sendMail({
-      from: '"My App" <noreply@myapp.com>',
+      from: '"personal-cms" <noreply@myapp.com>',
       to: options.to,
       subject: options.subject,
       html: html,
