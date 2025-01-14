@@ -18,11 +18,12 @@ import {
   Request
 } from '@nestjs/common';
 import { MembersService } from './members.service';
-import { CreateMemberDto } from './dto/create-member.dto';
-import { UpdateMemberDto } from './dto/update-member.dto';
-import { MemberResponseDto } from './dto/member-response.dto';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto } from './dto';
+import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+
 @ApiTags('members')
 @Controller('members')
 export class MembersController {
@@ -127,11 +128,10 @@ export class MembersController {
   @ApiResponse({ 
     status: HttpStatus.OK, 
     description: '이메일 인증 성공', 
-    type: MemberResponseDto 
   })
   async verifyEmail(
     @Body('token') token: string
-  ): Promise<MemberResponseDto> {
+  ): Promise<EmailVerificationResponse> {
     return this.membersService.verifyEmail(token);
   }
 

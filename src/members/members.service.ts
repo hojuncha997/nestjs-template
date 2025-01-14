@@ -1,20 +1,20 @@
 // src/members/members.service.ts
 // 회원 관리 서비스
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, HttpStatus } from '@nestjs/common';
 
 import { Member } from './entities/member.entity';
-import { CreateMemberDto } from './dto/create-member.dto';
-import { UpdateMemberDto } from './dto/update-member.dto';
-import { MemberResponseDto } from './dto/member-response.dto';
+import { MemberResponseDto, CreateMemberDto, UpdateMemberDto } from './dto';
+import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { MemberMapper } from './mappers/member.mapper';
-import {MemberStatus } from '@common/enums';
+import { MemberStatus, EmailTokenValidationError } from '@common/enums';
 import * as bcrypt from 'bcrypt';  // 비밀번호 해시화를 위한 패키지. pnpm add bcrypt @types/bcrypt
 import { v4 as uuidv4 } from 'uuid';  // 범용 고유 식별자(UUID) 생성을 위한 패키지. pnpm add uuid @types/uuid
 import { EmailService } from '@common/services/email.service';
 import { MembersRepository } from './repositories/members.repository';
-
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(
     private readonly membersRepository: MembersRepository,
     private readonly emailService: EmailService,
@@ -144,10 +144,29 @@ export class MembersService {
   /**
    * 이메일 인증 처리
    */
-  async verifyEmail(token: string): Promise<MemberResponseDto> {
+  async verifyEmail(token: string): Promise<EmailVerificationResponse> {
     const member = await this.membersRepository.findOneByVerificationToken(token);
     if (!member) {
-      throw new NotFoundException('유효하지 않은 인증 토큰입니다.');
+      throw new BadRequestException({
+        // statusCode: HttpStatus.BAD_REQUEST,
+        code: EmailTokenValidationError.INVALID_TOKEN,
+        message: '유효하지 않은 인증 토큰입니다.'
+      });
+    }
+    // 로직 상 불필요하지만 DB 직접 수정 등으로 인해 ACTIVE 상태인데 토큰이 남아있는 경우를 대비하여 남겨 놓음. 정합성이 깨졌을 때를 대비
+    if (member.status === MemberStatus.ACTIVE) {
+      // 내부적으로는 자세히 로깅
+      this.logger.error(
+        `Data inconsistency detected: Member(${member.id}) is ACTIVE but has verification token`,
+        { memberId: member.id, status: member.status, token: member.verificationToken }
+      );
+    
+      // 사용자에게는 일반적인 메시지
+      throw new BadRequestException({
+        // statusCode: HttpStatus.BAD_REQUEST,
+        code: EmailTokenValidationError.ALREADY_VERIFIED,
+        message: '이미 인증이 완료된 회원입니다.'
+      });
     }
 
     if (member.verificationTokenExpiresAt < new Date()) {
@@ -156,7 +175,11 @@ export class MembersService {
       await this.membersRepository.save(member);
       await this.sendVerificationEmail(member);
       
-      throw new BadRequestException('만료된 인증 토큰입니다. 새로운 인증 메일을 발송했습니다.');
+      throw new BadRequestException({
+        // statusCode: HttpStatus.BAD_REQUEST,
+        code: EmailTokenValidationError.EXPIRED,
+        message: '만료된 인증 토큰입니다. 새로운 인증 메일을 발송했습니다.'
+      });
     }
 
     member.emailVerified = true;
@@ -167,7 +190,13 @@ export class MembersService {
     member.notificationSettings.email = true;
 
     const updatedMember = await this.membersRepository.save(member);
-    return MemberMapper.toDto(updatedMember);
+    // return MemberMapper.toDto(updatedMember);
+    return {
+      email: updatedMember.email,
+      verified: updatedMember.emailVerified,
+      verifiedAt: updatedMember.emailVerifiedAt,
+      status: updatedMember.status,
+    }
   }
 
   /**
