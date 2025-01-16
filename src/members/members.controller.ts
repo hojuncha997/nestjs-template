@@ -18,7 +18,7 @@ import {
   Request
 } from '@nestjs/common';
 import { MembersService } from './members.service';
-import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto } from './dto';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto } from './dto';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -167,6 +167,19 @@ export class MembersController {
     @Body('amount') amount: number
   ): Promise<MemberResponseDto> {
     return this.membersService.updatePoints(uuid, pointType, amount);
+  }
+
+  @Post('social/signup')
+  @ApiOperation({ summary: '소셜 회원가입' })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: '소셜 회원가입 성공', 
+    type: MemberResponseDto 
+  })
+  async socialSignup(
+    @Body() createSocialMemberDto: CreateSocialMemberDto
+  ): Promise<MemberResponseDto> {
+    return this.membersService.createSocialMember(createSocialMemberDto);
   }
 
 } 

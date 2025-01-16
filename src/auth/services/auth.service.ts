@@ -1,12 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { ClientType } from '@common/enums/client-type.enum';
+import { ClientType, AuthProvider, AuthProviderUrl } from '@common/enums/';
 import { AuthRepository } from '../repositories/auth.repository';
 import { MembersService } from '@members/members.service';
 import { Member } from '@members/entities/member.entity';
+// import { SocialLoginDto } from '@members/dto/social-login.dto';
+import { SocialLoginDto } from '@auth/dto';
+// import axios from 'axios';
 
 export class RefreshTokenExpiredException extends UnauthorizedException {
   constructor() {
@@ -238,5 +241,147 @@ export class AuthService {
   async findMemberByUuid(uuid: string) {
     // return this.authRepository.findByUuid(uuid);
     return this.membersService.findOneByUuid(uuid);
+  }
+
+  async getSocialLoginUrl(provider: AuthProvider): Promise<string> {
+    const providerKey = provider.toUpperCase();
+    let url = AuthProviderUrl[providerKey];
+    
+    if (!url) {
+      throw new BadRequestException(`URL not found for provider: ${provider}`);
+    }
+
+    switch (provider) {
+      case AuthProvider.GOOGLE:
+
+
+        const params = new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+          response_type: 'code', // 필수 파라미터
+          // scope: 'openid email profile https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+          scope: 'openid profile email',
+          access_type: 'offline',
+          prompt: 'consent'
+        });
+        url = `${url}?${params.toString()}`;
+        break;
+
+
+      default:
+        throw new BadRequestException(`Unsupported provider: ${provider}`);
+    }
+    
+    console.log('url from getSocialLoginUrl:', url);
+    return url;
+  }
+
+  async socialLogin(socialLoginDto: SocialLoginDto): Promise<any> {
+    try {
+      // 소셜 프로필로 회원 찾기
+      let member = await this.membersService.findByProviderAndProviderId(
+        socialLoginDto.provider,
+        socialLoginDto.providerId
+      );
+
+      // 회원이 없으면 자동으로 가입 처리
+      if (!member) {
+        member = await this.membersService.createSocialMember(socialLoginDto);
+        
+        // 새로 생성된 회원의 전체 정보를 다시 조회
+        member = await this.membersService.findOneByUuid(member.uuid);
+      }
+
+      console.log('Final member object:', member); // 디버깅용
+
+      const user: AuthUser = {
+        id: member.id,
+        uuid: member.uuid,
+        email: member.email,
+        role: member.role,
+        preferences: member.preferences,
+        status: member.status,
+        tokenVersion: member.tokenVersion
+      };
+
+      return this.login(user, socialLoginDto.clientType, socialLoginDto.keepLoggedIn);
+    } catch (error) {
+      console.error('Social login error:', error);
+      throw error;
+    }
+  }
+
+  async getGoogleToken(code: string) {
+    // console.log('code from getGoogleToken:', code);
+    // console.log('process.env.GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
+    // console.log('process.env.GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
+    
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const responseData = await response.text(); // 또는 response.json()
+    console.log('Response data:', responseData);
+
+    if (!response.ok) {
+      throw new Error(`Google token error: ${responseData}`);
+    }
+
+    return JSON.parse(responseData);
+  }
+
+  // async getGoogleToken(code: string) {
+  //   console.log('code from getGoogleToken:', code); // code from getGoogleToken: 4/0AanRRrsr9NgIdU57bWPsXp17pt4I8f4tmsxWhjxDghB50dohPL59Mj1AwAUOoWu8SGz0jA
+  //   // Google OAuth2 토큰 획득 로직
+  //   const response = await fetch('https://oauth2.googleapis.com/token', {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/x-www-form-urlencoded',
+  //     },
+  //     body: new URLSearchParams({
+  //       code,
+  //       client_id: process.env.GOOGLE_CLIENT_ID,
+  //       client_secret: process.env.GOOGLE_CLIENT_SECRET,
+  //       redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+  //       grant_type: 'authorization_code',
+  //     }),
+  //   });
+  //   console.log('response from getGoogleToken@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:', response);
+  //   return response.json();
+  // }
+
+  async getGoogleUserInfo(accessToken: string) {
+    // Google 사용자 정보 획득 로직
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return response.json();
+  }
+
+  standardizeUserInfo(provider: string, userInfo: any): SocialLoginDto {
+    switch (provider) {
+      case 'google':
+        return {
+          email: userInfo.email,
+          name: userInfo.name,
+          picture: userInfo.picture,
+          provider: AuthProvider.GOOGLE,
+          providerId: userInfo.id,
+          clientType: ClientType.WEB,
+          keepLoggedIn: false
+        };
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
   }
 } 

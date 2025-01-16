@@ -6,6 +6,7 @@ import { Member } from '../entities/member.entity';
 import { MemberResponseDto } from '../dto/member-response.dto';
 import { CreateMemberDto } from '../dto/create-member.dto';
 import { UpdateMemberDto } from '../dto/update-member.dto';
+import { CreateSocialMemberDto } from '../dto/create-social-member.dto';
 import { AuthProvider, MemberStatus } from '@common/enums';
 
 export class MemberMapper {
@@ -19,6 +20,7 @@ export class MemberMapper {
     dto.nickname = member.nickname;
     dto.phoneNumber = member.phoneNumber;
     dto.provider = member.provider;
+    dto.providerId = member.providerId;
     dto.emailVerified = member.emailVerified;
     dto.profileImage = member.profileImage;
     dto.status = member.status;
@@ -44,11 +46,11 @@ export class MemberMapper {
   }
 
   // DTO를 Entity로 변환 (생성/수정 시 사용)
-  static toEntity(dto: CreateMemberDto | UpdateMemberDto): Partial<Member> {
+  static toEntity(dto: CreateMemberDto | UpdateMemberDto | CreateSocialMemberDto): Partial<Member> {
     const entity = new Member();
-    if (dto.email) entity.email = dto.email;
-    if (dto.password) entity.password = dto.password;
-    
+    if (dto.email) entity.email = dto?.email;
+    if('password' in dto) entity.password = dto?.password;
+
     // 약관 동의 처리
     if ('termsAgreed' in dto) {
       entity.termsAgreed = dto.termsAgreed;
@@ -61,8 +63,8 @@ export class MemberMapper {
     }
 
     // 기본값 설정
-    entity.provider = AuthProvider.LOCAL;
-    entity.status = MemberStatus.ACTIVE;
+    if(!('provider' in dto)) entity.provider = AuthProvider.LOCAL;
+    if(!('status' in dto)) entity.status = MemberStatus.ACTIVE;
     
     return entity;
   }

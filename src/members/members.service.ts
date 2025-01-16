@@ -3,14 +3,17 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, HttpStatus } from '@nestjs/common';
 
 import { Member } from './entities/member.entity';
-import { MemberResponseDto, CreateMemberDto, UpdateMemberDto } from './dto';
+import { MemberResponseDto, CreateMemberDto, UpdateMemberDto, CreateSocialMemberDto } from './dto';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { MemberMapper } from './mappers/member.mapper';
-import { MemberStatus, EmailTokenValidationError } from '@common/enums';
+import { MemberStatus, EmailTokenValidationError, Role, Language, Theme } from '@common/enums';
 import * as bcrypt from 'bcrypt';  // 비밀번호 해시화를 위한 패키지. pnpm add bcrypt @types/bcrypt
 import { v4 as uuidv4 } from 'uuid';  // 범용 고유 식별자(UUID) 생성을 위한 패키지. pnpm add uuid @types/uuid
 import { EmailService } from '@common/services/email.service';
 import { MembersRepository } from './repositories/members.repository';
+import { AuthProvider } from '@common/enums';
+import { SocialLoginDto } from '@auth/dto/social-login.dto';
+
 @Injectable()
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
@@ -285,4 +288,60 @@ export class MembersService {
   async incrementTokenVersion(memberId: number): Promise<void> {
     await this.membersRepository.incrementTokenVersion(memberId);
   }
+
+  /**
+   * 소셜 회원 가입
+   */
+  // async createSocialMember(createSocialMemberDto: CreateSocialMemberDto): Promise<MemberResponseDto> {
+  async createSocialMember(socialLoginDto: SocialLoginDto): Promise<MemberResponseDto> {
+    const memberEntity = MemberMapper.toEntity({
+      email: socialLoginDto.email,
+      provider: socialLoginDto.provider,
+      providerId: socialLoginDto.providerId,
+      name: socialLoginDto.name,
+      profileImage: socialLoginDto.picture,
+      status: MemberStatus.ACTIVE,
+      role: Role.USER,
+      preferences: {
+        language: Language.KO,
+        timezone: 'Asia/Seoul',
+        theme: Theme.LIGHT
+      }
+    });
+    
+    // 소셜 회원은 이메일 인증이 필요 없음
+    memberEntity.emailVerified = true;
+    memberEntity.emailVerifiedAt = new Date();
+    memberEntity.status = MemberStatus.ACTIVE;
+    
+    // 필수 약관 동의 처리 (소셜 로그인의 경우 자동 동의로 처리)
+    memberEntity.termsAgreed = true;
+    memberEntity.termsAgreedAt = new Date();
+    memberEntity.privacyAgreed = true;
+    memberEntity.privacyAgreedAt = new Date();
+    
+    // provider와 providerId 명시적 설정
+    memberEntity.provider = socialLoginDto.provider;
+    memberEntity.providerId = socialLoginDto.providerId;
+    
+    console.log('memberEntity before save:', {
+      ...memberEntity,
+      provider: memberEntity.provider,
+      providerId: memberEntity.providerId
+    });
+    
+    const savedMember = await this.membersRepository.create(memberEntity);
+    
+    if (!savedMember.id) {
+      throw new Error('회원 저장 실패: ID가 생성되지 않았습니다.');
+    }
+    
+    console.log('savedMember', savedMember);
+    return MemberMapper.toDto(savedMember);
+  }
+
+  async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
+    return this.membersRepository.findByProviderAndProviderId(provider, providerId);
+  }
+
 } 

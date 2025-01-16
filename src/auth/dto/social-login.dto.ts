@@ -2,10 +2,17 @@
 // 경로: src/auth/dto/social-login.dto.ts
 
 import { AuthProvider } from '@common/enums/auth-provider.enum';
+import { ClientType } from '@common/enums';
 
 export class SocialLoginDto {
+  email: string;
+  name?: string;
+  picture?: string;
   provider: AuthProvider;
-  token: string; // 프론트엔드에서 받은 토큰
+  // token: string; // 프론트엔드에서 받은 토큰
+  providerId: string;
+  keepLoggedIn?: boolean;
+  clientType?: ClientType;
 }
 /*
 소셜 로그인 프로세스

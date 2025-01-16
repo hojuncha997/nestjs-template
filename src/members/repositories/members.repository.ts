@@ -6,7 +6,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository , DataSource} from 'typeorm';
 import { Member } from '../entities/member.entity';
-import { MemberStatus } from '@common/enums';
+import { MemberStatus , AuthProvider} from '@common/enums';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -188,5 +188,9 @@ export class MembersRepository {
       'tokenVersion',
       1
     );
+  }
+
+  async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
+    return this.memberRepository.findOne({ where: { provider, providerId } });
   }
 } 
