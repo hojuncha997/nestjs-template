@@ -229,24 +229,28 @@ async refresh(
  // 리프레시 토큰으로 액세스 토큰 발급
  @Post('access-token')
  async getAccessToken(
-   @Headers('Authorization') authHeader: string,
+  //  @Headers('Authorization') authHeader: string,
+  //  @Headers('refresh_token') refresh_token: string,
+  //  @Req() request: Request,
+  @Cookies('refresh_token') refresh_token: string,
    @Query('clientType') clientType: ClientType = ClientType.WEB
  ) {
+  console.log(" access-token 발급 요청 받음")
+  console.log("refresh_token: ", refresh_token)
 
-  console.log('--------------------------------');
-  console.log('authHeader:', authHeader);
-  console.log('clientType:', clientType);
-  console.log('--------------------------------');
   
-   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+   if (!refresh_token) {
      throw new UnauthorizedException('유효한 리프레시 토큰이 필요합니다.');
    }
 
-   const refreshToken = authHeader.split(' ')[1];
-   const tokens = await this.authService.refreshAccessToken(refreshToken, clientType);
-   return {
-     access_token: tokens.access_token
-   };
+  const tokens = await this.authService.refreshAccessToken(refresh_token, clientType);
+  console.log("tokens: ", tokens)
+  //  return {
+  //   refresh_token: tokens.refresh_token,
+  //   access_token: tokens.access_token
+  //  };
+
+  return tokens;
  }
 
 
