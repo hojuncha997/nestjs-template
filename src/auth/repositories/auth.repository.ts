@@ -51,67 +51,78 @@ export class AuthRepository {
    console.log('Starting saveRefreshToken process for member:', memberId);
    
    await this.refreshTokenRepository.manager.transaction(async transactionalEntityManager => {
-     // 먼저 member가 존재하는지 확인 (수정된 부분)
-     const member = await transactionalEntityManager.getRepository(Member).findOneBy({
-       id: memberId
-     });
-     console.log('Found member:', {
-       exists: !!member,
-       id: member?.id,
-       email: member?.email
+     // uuid로 정확한 member 찾기
+     const member = await transactionalEntityManager.getRepository(Member).findOne({
+       where: { id: memberId },
+       select: {
+         id: true,
+         uuid: true,
+         email: true,
+         role: true,
+         preferences: {
+           language: true,
+           timezone: true,
+           theme: true
+         },
+         tokenVersion: true
+       }
      });
 
      if (!member) {
        throw new Error(`Member not found with id: ${memberId}`);
      }
 
+     console.log('Found member for refresh token:', {
+       id: member.id,
+       email: member.email,
+       uuid: member.uuid
+     });
+
      // 기존 토큰 revoke
-     const updateResult = await transactionalEntityManager.update(RefreshToken, 
-       { memberId, revoked: false },
-       { 
+     const updateResult = await transactionalEntityManager
+       .createQueryBuilder()
+       .update(RefreshToken)
+       .set({
          revoked: true,
          revokedAt: new Date(),
          revokedReason: 'NEW_TOKEN_ISSUED'
-       }
-     );
-     console.log('Revoked existing tokens:', updateResult.affected);
-     console.log('keepLoggedIn from repository:', keepLoggedIn);
+       })
+       .where('member = :memberId AND revoked = :revoked', { 
+         memberId: member.id, 
+         revoked: false 
+       })
+       .execute();
 
      // 새 토큰 저장
      const tokenEntity = new RefreshToken();
      tokenEntity.token = token;
-     tokenEntity.memberId = memberId;
-     tokenEntity.member = member;
+     tokenEntity.member = member;  // 전체 member 객체 사용
      tokenEntity.tokenVersion = member.tokenVersion;
      tokenEntity.keepLoggedIn = keepLoggedIn;
-     tokenEntity.expiresAt = new Date(Date.now() + (keepLoggedIn ? 7 * 24 * 60 * 60 * 1000 : 1 * 24 * 60 * 60 * 1000));
+     tokenEntity.expiresAt = new Date(Date.now() + (keepLoggedIn ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
 
-     console.log('tokenEntity from repository:', tokenEntity);
      const saved = await transactionalEntityManager.save(RefreshToken, tokenEntity);
-     console.log('New token saved with ID:', saved.id);
 
-     // 저장 확인 (직접 조회)
+     // 저장 확인
      const verify = await transactionalEntityManager.getRepository(RefreshToken).findOne({
        where: { id: saved.id },
-       relations: {
-         member: true
+       relations: ['member'],
+       select: {
+         id: true,
+         token: true,
+         keepLoggedIn: true,
+         member: {
+           id: true,
+           uuid: true,
+           email: true
+         }
        }
      });
 
-     // 추가 디버깅 로그
-     console.log('Raw saved token:', saved);
-     console.log('Raw verified token:', verify);
-     
-     console.log('Token verification:', {
-       exists: !!verify,
-       id: verify?.id,
-       memberId: verify?.memberId,
-       memberExists: !!verify?.member,
-       keepLoggedIn: keepLoggedIn,
-       memberInfo: verify?.member ? {
-         id: verify.member.id,
-         email: verify.member.email
-       } : null
+     console.log('Saved refresh token verification:', {
+       tokenId: verify?.id,
+       memberEmail: verify?.member?.email,
+       memberUuid: verify?.member?.uuid
      });
    });
  }
@@ -134,7 +145,7 @@ export class AuthRepository {
   async revokeAllRefreshTokens(memberId: number): Promise<void> {
 
    await this.refreshTokenRepository.update(
-     { memberId, revoked: false },
+     { member: { id: memberId }, revoked: false },
      { 
        revoked: true,
        revokedAt: new Date(),

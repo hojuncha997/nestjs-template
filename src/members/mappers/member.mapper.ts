@@ -13,6 +13,7 @@ export class MemberMapper {
   // Entity를 ResponseDTO로 변환
   static toDto(member: Member): MemberResponseDto {
     const dto = new MemberResponseDto();
+    dto.id = member.id;
     dto.uuid = member.uuid;
     dto.email = member.email;
     dto.tokenVersion = member.tokenVersion;
@@ -63,8 +64,8 @@ export class MemberMapper {
     }
 
     // 기본값 설정
-    if(!('provider' in dto)) entity.provider = AuthProvider.LOCAL;
-    if(!('status' in dto)) entity.status = MemberStatus.ACTIVE;
+    entity.provider = ('provider' in dto) ? dto.provider : AuthProvider.LOCAL;
+    entity.status = ('status' in dto) ? dto.status : MemberStatus.ACTIVE;
     
     return entity;
   }

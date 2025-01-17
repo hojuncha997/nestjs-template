@@ -126,22 +126,14 @@ export class AuthService {
     };
   }
 
-  async refreshAccessToken(refreshToken: string, clientType: ClientType) {
+  async refreshAccessToken(refreshToken: string, clientType: ClientType): Promise<any> {
     console.log('Refresh token received:', refreshToken);
     
-    // 토큰 유효성 검증
-    try {
-      const verified = await this.jwtService.verifyAsync(refreshToken);
-      console.log('Token verified:', verified);
-    } catch (e) {
-      console.error('Token verification failed:', e);
-      const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
-      if (tokenData) {
-        await this.authRepository.revokeAllRefreshTokens(tokenData.member.id);
-      }
-      throw new RefreshTokenExpiredException();
-    }
-
+    // 토큰 검증
+    const payload = await this.jwtService.verifyAsync(refreshToken);
+    console.log('Token verified:', payload);
+    
+    // DB에서 리프레시 토큰 조회
     const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
     console.log('Token data from DB:', tokenData);
     
@@ -149,34 +141,23 @@ export class AuthService {
       throw new InvalidRefreshTokenException();
     }
 
-    const payload: JwtPayload = { 
-      email: tokenData.member.email, 
-      sub: tokenData.member.uuid,
+    // 토큰의 사용자 정보와 DB의 사용자 정보가 일치하는지 확인
+    if (payload.sub !== tokenData.member.uuid) {
+      throw new UnauthorizedException('Invalid token ownership');
+    }
+
+    // 새 토큰 발급 시 tokenData.member의 정보 사용
+    const user: AuthUser = {
+      id: tokenData.member.id,
+      uuid: tokenData.member.uuid,
+      email: tokenData.member.email,
       role: tokenData.member.role,
       preferences: tokenData.member.preferences,
-      tokenVersion: tokenData.tokenVersion,
-      keepLoggedIn: tokenData.keepLoggedIn,
+      status: tokenData.member.status,
+      tokenVersion: tokenData.tokenVersion
     };
 
-    const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
-    });
-    const newRefreshToken = await this.jwtService.signAsync(payload, {
-      // expiresIn: '7d',
-      expiresIn: tokenData.keepLoggedIn ? '7d' : '24h',
-    });
-
-    // 기존 토큰 무효화하고 새 토큰 저장
-    await this.authRepository.revokeRefreshToken(refreshToken);
-    await this.authRepository.saveRefreshToken(tokenData.member.id, newRefreshToken, tokenData.keepLoggedIn);
-
-    console.log('tokenData.keepLoggedIn:', tokenData.keepLoggedIn);
-
-    return {
-      access_token: accessToken,
-      refresh_token: newRefreshToken,
-      keepLoggedIn: tokenData.keepLoggedIn,
-    };
+    return this.login(user, clientType, tokenData.keepLoggedIn);
   }
 
   async logout(refreshToken: string, userUuid: string) {
@@ -278,21 +259,14 @@ export class AuthService {
 
   async socialLogin(socialLoginDto: SocialLoginDto): Promise<any> {
     try {
-      // 소셜 프로필로 회원 찾기
       let member = await this.membersService.findByProviderAndProviderId(
         socialLoginDto.provider,
         socialLoginDto.providerId
       );
 
-      // 회원이 없으면 자동으로 가입 처리
       if (!member) {
         member = await this.membersService.createSocialMember(socialLoginDto);
-        
-        // 새로 생성된 회원의 전체 정보를 다시 조회
-        member = await this.membersService.findOneByUuid(member.uuid);
       }
-
-      console.log('Final member object:', member); // 디버깅용
 
       const user: AuthUser = {
         id: member.id,
