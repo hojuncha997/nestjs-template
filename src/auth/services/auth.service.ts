@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import * as crypto from 'crypto';
@@ -259,23 +259,32 @@ export class AuthService {
 
   async socialLogin(socialLoginDto: SocialLoginDto): Promise<any> {
     try {
-      let member = await this.membersService.findByProviderAndProviderId(
+      // 1. 소셜 로그인으로 이미 가입했는지 먼저 확인
+      let socialMember = await this.membersService.findByProviderAndProviderId(
         socialLoginDto.provider,
         socialLoginDto.providerId
       );
-
-      if (!member) {
-        member = await this.membersService.createSocialMember(socialLoginDto);
+  
+      // 2. 없으면 이메일 중복 체크
+      if (!socialMember) {
+        const localMember = await this.membersService.findByEmail(socialLoginDto.email);
+        
+        if(localMember) {
+          throw new ConflictException('이미 가입된 이메일입니다.');
+        }
+  
+        // 3. 신규 가입
+        socialMember = await this.membersService.createSocialMember(socialLoginDto);
       }
-
+  
       const user: AuthUser = {
-        id: member.id,
-        uuid: member.uuid,
-        email: member.email,
-        role: member.role,
-        preferences: member.preferences,
-        status: member.status,
-        tokenVersion: member.tokenVersion
+        id: socialMember.id,
+        uuid: socialMember.uuid,
+        email: socialMember.email,
+        role: socialMember.role,
+        preferences: socialMember.preferences,
+        status: socialMember.status,
+        tokenVersion: socialMember.tokenVersion
       };
 
       return this.login(user, socialLoginDto.clientType, socialLoginDto.keepLoggedIn);

@@ -13,6 +13,7 @@ import {
   Query,
   Param,
   BadRequestException,
+  ConflictException,
   HttpException,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -120,10 +121,14 @@ export class AuthController {
      }
 
    } catch (error) {
-     console.error('Social callback error:', error);
-     const errorUrl = new URL('/auth/error', process.env.FRONTEND_URL);
-     errorUrl.searchParams.set('message', '소셜 로그인 실패');
-     return res.redirect(errorUrl.toString());
+    //  console.error('Social callback error:', error);
+    //  const errorUrl = new URL('/auth/error', process.env.FRONTEND_URL);
+    //  errorUrl.searchParams.set('message', '소셜 로그인 실패');
+    //  return res.redirect(errorUrl.toString());
+    const errorCode = error instanceof ConflictException ? 'EMAIL_EXISTS' : 'LOGIN_FAILED';
+    const errorUrl = new URL('/auth/error', process.env.FRONTEND_URL);
+    errorUrl.searchParams.set('code', errorCode);
+    return res.redirect(errorUrl.toString());
    }
  }
 
