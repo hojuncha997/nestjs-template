@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
 import databaseConfig from './config/database.config';
 import { getTypeOrmConfig } from './config/typeorm.config';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -26,6 +27,8 @@ import { getTypeOrmConfig } from './config/typeorm.config';
     MembersModule,
     // 인증 모듈
     AuthModule,
+    // 게시글 모듈
+    PostsModule,
   ],
 })
 export class AppModule {}
