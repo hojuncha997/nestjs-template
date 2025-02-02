@@ -21,7 +21,8 @@ import { MembersService } from './members.service';
 import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto } from './dto';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 
 
 @ApiTags('members')

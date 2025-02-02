@@ -100,8 +100,8 @@ export class PostsService {
         };
     }
 
-    async findPostByUuId(uuid: string): Promise<PostResponseDto | null> {
-        const postEntity = await this.postsRepository.findPostByUuId(uuid);
+    async findPostByUuid(uuid: string): Promise<PostResponseDto | null> {
+        const postEntity = await this.postsRepository.findPostByUuid(uuid);
         if (!postEntity) {
             throw new NotFoundException(`Post with UUID "${uuid}" not found`);
         }
@@ -118,7 +118,7 @@ export class PostsService {
     async updatePost(uuid: string, updatePostDto: UpdatePostDto): Promise<PostResponseDto> {
         // const postEntity = this.postMapper.updateEntity(post);
         // const existingPost = await this.postRepository.findOneOrFail({ where: { id } });
-        const existingPost = await this.postsRepository.findPostByUuId(uuid);
+        const existingPost = await this.postsRepository.findPostByUuid(uuid);
         if (!existingPost) {
             throw new NotFoundException(`Post with UUID "${uuid}" not found`);
         }
@@ -129,7 +129,7 @@ export class PostsService {
     }
 
     async deletePost(uuid: string): Promise<void> {
-        const existingPost = await this.postsRepository.findPostByUuId(uuid);
+        const existingPost = await this.postsRepository.findPostByUuid(uuid);
         if (!existingPost) {
             throw new NotFoundException(`Post with UUID "${uuid}" not found`);
         }

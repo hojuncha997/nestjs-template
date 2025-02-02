@@ -20,7 +20,7 @@ export class PostsRepository extends Repository<Post> {
         return await this.repository.find();
     }
 
-    async findPostByUuId(uuid: string): Promise<Post | null> {
+    async findPostByUuid(uuid: string): Promise<Post | null> {
         return await this.repository.findOne({ where: { uuid: uuid } });
     }
 

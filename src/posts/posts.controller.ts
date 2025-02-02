@@ -15,7 +15,7 @@ export class PostsController {
 
     @Get(':uuid')
     async getPost(@Param('uuid') uuid: string) {
-        return await this.postsService.findPostByUuId(uuid);
+        return await this.postsService.findPostByUuid(uuid);
     }
 
     @Post()
