@@ -1,7 +1,8 @@
 // src/posts/eitities/post.entity.ts
 
 import { GuestbookStatus } from '@common/enums/guestbook-status.enum';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Member } from '@members/entities/member.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Entity()
@@ -58,10 +59,39 @@ export class Guestbook {
     @Column({default: false})
     isSecret: boolean;
 
+    @ManyToOne(() => Member)
+/*
+    "많은 Guestbook이 하나의 Member에 속할 수 있다"는 관계를 정의
+    즉, 한 명의 사용자(Member)가 여러 개의 게시물(Guestbook)을 작성할 수 있음
+    () => Member는 순환 참조 문제를 피하기 위해 사용되는 지연 로딩 문법
+    
+    
+    @JoinColumn({ name: 'author_id' })
+    
+    실제 데이터베이스에서 외래 키(foreign key) 컬럼의 이름을 author_id로 지정
+    이 컬럼에는 Member 테이블의 id(PK) 값이 저장됨
+    이 데코레이터가 없으면 기본값으로 memberId와 같은 이름이 사용됨
+    
+    
+    author: Member
+    
+    TypeScript에서 사용할 타입을 정의
+    이를 통해 guestbook.author.nickname과 같이 관계된 Member의 속성에 접근 가능
+*/
+    @ManyToOne(() => Member)
+    @JoinColumn({ name: 'author_id' })
+    author: Member;
+
     @Column()
-    // @ManyToOne(() => Member, (member) => member.posts)
-    author: string;
-    // author: Member;
+    author_id: number;
+
+    // 닉네임/이메일 표시용 필드. 작성 시의 작성자 이름 저장
+    @Column({ nullable: true })
+    author_display_name: string;  // 닉네임 또는 이메일이 저장될 필드
+
+    // 현재 작성자 필드 추가. 
+    @Column({ nullable: true })
+    current_author_name: string;
    
     // @Column('simple-json')
     // content: string;

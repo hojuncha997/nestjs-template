@@ -4,9 +4,10 @@ import { CreateGuestbookDto } from './dtos/create-guestbook.dto';
 import { UpdateGuestbookDto } from './dtos/update-guestbook.dto';
 import { GuestbookResponseDto } from './dtos/guestbook-response.dto';
 import { GuestbookMapper } from './mappers/guestbook.mapper';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { GetGuestbooksQueryDto } from './dtos/get-guestbook-query.dto';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
+import { Member } from '../members/entities/member.entity';
 
 @Injectable()
 export class GuestbookService {
@@ -109,32 +110,56 @@ export class GuestbookService {
         return this.guestbookMapper.toDto(guestbookEntity);
     }
 
-    async createGuestbook(createGuestbookDto: CreateGuestbookDto): Promise<GuestbookResponseDto> {
-        
-        const guestbookEntity = this.guestbookMapper.toEntity(createGuestbookDto);
-        const savedGuestbook = await this.guestbookRepository.createGuestbook(guestbookEntity);
+    async createGuestbook(guestbookDto: CreateGuestbookDto, member: Member): Promise<GuestbookResponseDto> {
+        const guestbook = this.guestbookMapper.toEntity(guestbookDto);
+
+        const displayName = member.nickname || member.email;
+          // 작성자 정보 추가
+        guestbook.author = member;
+        guestbook.author_id = member.id;
+        guestbook.author_display_name = displayName;
+        guestbook.current_author_name = displayName;
+
+        const savedGuestbook = await this.guestbookRepository.createGuestbook(guestbook);
         return this.guestbookMapper.toDto(savedGuestbook);
     }
 
-    async updateGuestbook(uuid: string, updateGuestbookDto: UpdateGuestbookDto): Promise<GuestbookResponseDto> {
-        // const postEntity = this.postMapper.updateEntity(post);
-        // const existingPost = await this.postRepository.findOneOrFail({ where: { id } });
-        const existingGuestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
-        if (!existingGuestbook) {
-            throw new NotFoundException(`Guestbook with UUID "${uuid}" not found`);
+    async updateGuestbook(uuid: string, guestbookDto: UpdateGuestbookDto, member: Member): Promise<GuestbookResponseDto> {
+        const guestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
+        if (!guestbook) {
+            throw new NotFoundException('방명록을 찾을 수 없습니다.');
         }
-                
-        const updatedGuestbook = this.guestbookMapper.updateEntity(existingGuestbook, updateGuestbookDto);
+        
+        // 작성자 본인만 수정 가능
+        if (guestbook.author_id !== member.id) {
+            throw new ForbiddenException('방명록을 수정할 권한이 없습니다.');
+        }
+
+        const updatedGuestbook = this.guestbookMapper.updateEntity(guestbook, guestbookDto);
         const savedGuestbook = await this.guestbookRepository.updateGuestbook(updatedGuestbook);
         return this.guestbookMapper.toDto(savedGuestbook);
     }
 
-    async deleteGuestbook(uuid: string): Promise<void> {
-        const existingGuestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
-        if (!existingGuestbook) {
-            throw new NotFoundException(`Guestbook with UUID "${uuid}" not found`);
+    async deleteGuestbook(uuid: string, member: Member): Promise<void> {
+        const guestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
+        if (!guestbook) {
+            throw new NotFoundException('방명록을 찾을 수 없습니다.');
+        }
+
+        // 작성자 본인만 삭제 가능
+        if (guestbook.author_id !== member.id) {
+            throw new ForbiddenException('방명록을 삭제할 권한이 없습니다.');
         }
 
         await this.guestbookRepository.deleteGuestbook(uuid);
+    }
+
+
+    // Member 정보 업데이트 시 호출되는 메서드
+    async updateAuthorDisplayNames(userId: number, newDisplayName: string) {
+        await this.guestbookRepository.update(
+            { author_id: userId },
+            { current_author_name: newDisplayName }
+        );
     }
 }

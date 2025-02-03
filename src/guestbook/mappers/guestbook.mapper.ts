@@ -52,7 +52,8 @@ export class GuestbookMapper {
        dto.uuid = entity.uuid;
        dto.title = entity.title;
        dto.content = entity.content;
-       dto.author = entity.author;
+    //    dto.author_display_name = entity.author.nickname || entity.author.email;
+       dto.author_display_name = entity.current_author_name;
        dto.isSecret = entity.isSecret;
        dto.category = entity.category;
        dto.slug = entity.slug;

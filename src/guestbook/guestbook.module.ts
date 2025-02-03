@@ -8,9 +8,13 @@ import { Guestbook } from './entities/guestbook.entity';
 import { GuestbookService } from './guestbook.service';
 import { GuestbookRepository } from './guestbook.repository';
 import { GuestbookMapper } from './mappers/guestbook.mapper';
+import { MembersModule } from '../members/members.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Guestbook])],
+    imports: [
+        TypeOrmModule.forFeature([Guestbook]),
+        MembersModule,
+    ],
     providers: [GuestbookService, GuestbookRepository, GuestbookMapper],
     controllers: [GuestbookController],
     // exports: [GuestbookService],
