@@ -114,7 +114,7 @@ export class Guestbook {
     @Column({
         type: 'enum',
         enum: GuestbookStatus,
-        default: GuestbookStatus.DRAFT
+        default: GuestbookStatus.PUBLISHED
     })
     status: GuestbookStatus;
     

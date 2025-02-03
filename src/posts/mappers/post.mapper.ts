@@ -34,7 +34,7 @@ export class PostMapper {
        }
 
        // 기본값이 있는 필드들
-       post.status = dto.status || PostStatus.DRAFT;
+       post.status = dto.status || PostStatus.PUBLISHED;
        post.isFeatured = dto.isFeatured || false;
 
        return post;

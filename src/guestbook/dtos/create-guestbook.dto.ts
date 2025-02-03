@@ -53,5 +53,5 @@ export class CreateGuestbookDto {
 
     @IsOptional()
     @IsEnum(GuestbookStatus)
-    status?: GuestbookStatus = GuestbookStatus.DRAFT;
+    status?: GuestbookStatus = GuestbookStatus.PUBLISHED;
 }

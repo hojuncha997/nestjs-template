@@ -81,7 +81,7 @@ export class Post {
     @Column({
         type: 'enum',
         enum: PostStatus,
-        default: PostStatus.DRAFT
+        default: PostStatus.PUBLISHED
     })
     status: PostStatus;
     

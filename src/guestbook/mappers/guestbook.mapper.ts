@@ -38,7 +38,7 @@ export class GuestbookMapper {
        }
 
        // 기본값이 있는 필드들
-       guestbook.status = dto.status || GuestbookStatus.DRAFT;
+       guestbook.status = dto.status || GuestbookStatus.PUBLISHED;
        guestbook.isFeatured = dto.isFeatured || false;
 
        return guestbook;

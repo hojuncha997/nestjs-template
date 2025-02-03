@@ -47,5 +47,5 @@ export class CreatePostDto {
 
     @IsOptional()
     @IsEnum(PostStatus)
-    status?: PostStatus = PostStatus.DRAFT;
+    status?: PostStatus = PostStatus.PUBLISHED;
 }
