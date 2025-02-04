@@ -116,7 +116,8 @@ export class GuestbookService {
         const displayName = member.nickname || member.email;
           // 작성자 정보 추가
         guestbook.author = member;
-        guestbook.author_id = member.id;
+        // guestbook.author_id = member.id; 엔티티에서 명시적인 author_id 속성을 삭제하고 author 객체를 사용하도록 수정
+        // guestbook.author.id = member.id; 굳이 사용하려면 이렇게 사용해야 함
         guestbook.author_display_name = displayName;
         guestbook.current_author_name = displayName;
 
@@ -131,7 +132,8 @@ export class GuestbookService {
         }
         
         // 작성자 본인만 수정 가능
-        if (guestbook.author_id !== member.id) {
+        // if (guestbook.author.id !== member.id) {
+        if (guestbook.author.id !== member.id) {
             throw new ForbiddenException('방명록을 수정할 권한이 없습니다.');
         }
 
@@ -147,7 +149,8 @@ export class GuestbookService {
         }
 
         // 작성자 본인만 삭제 가능
-        if (guestbook.author_id !== member.id) {
+        // if (guestbook.author_id !== member.id) {
+        if (guestbook.author.id !== member.id) {
             throw new ForbiddenException('방명록을 삭제할 권한이 없습니다.');
         }
 
@@ -156,9 +159,10 @@ export class GuestbookService {
 
 
     // Member 정보 업데이트 시 호출되는 메서드
-    async updateAuthorDisplayNames(userId: number, newDisplayName: string) {
+    async updateAuthorDisplayNames(memberId: number, newDisplayName: string) {
         await this.guestbookRepository.update(
-            { author_id: userId },
+            // { author_id: memberId },
+            { author: { id: memberId } },
             { current_author_name: newDisplayName }
         );
     }

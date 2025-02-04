@@ -5,7 +5,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Member } from '@members/entities/member.entity';
 import { v4 as uuidv4 } from 'uuid';
 
-@Entity()
+@Entity('guestbook')
 @Index(['uuid'], { unique: true })  // 게시물 식별을 위한 기본 인덱스
 @Index(['status'])    // 발행된 게시물 목록 조회용
 export class Guestbook {
@@ -78,32 +78,22 @@ export class Guestbook {
     TypeScript에서 사용할 타입을 정의
     이를 통해 guestbook.author.nickname과 같이 관계된 Member의 속성에 접근 가능
 */
-    @ManyToOne(() => Member)
+    // @ManyToOne(() => Member)
+    @ManyToOne(() => Member, { nullable: false })
     @JoinColumn({ name: 'author_id' })
     author: Member;
 
-    @Column()
-    author_id: number;
+    // @Column({ name: 'author_id' })
+    // author_id: number;
 
-    // 닉네임/이메일 표시용 필드. 작성 시의 작성자 이름 저장
-    @Column({ nullable: true })
-    author_display_name: string;  // 닉네임 또는 이메일이 저장될 필드
+    @Column({ name: 'author_display_name' })
+    author_display_name: string;
 
-    // 현재 작성자 필드 추가. 
-    @Column({ nullable: true })
+    @Column({ name: 'current_author_name' })
     current_author_name: string;
-   
-    // @Column('simple-json')
-    // content: string;
-    // Tiptap 에디터 사용으로 인한 json 타입 사용
+
     @Column('json')
     content: Record<string, any>;
-
-    // @Column()
-    // createdAt: Date;
-
-    // @Column()
-    // updatedAt: Date;
 
     @CreateDateColumn()
     createdAt: Date;

@@ -25,7 +25,7 @@ export class GuestbookRepository extends Repository<Guestbook> {
     }
 
     async createGuestbook(guestbook: Guestbook): Promise<Guestbook> {
-        return await this.saveGuestbook(guestbook);
+        return await this.save(guestbook);
     }
 
     async updateGuestbook(guestbook: Guestbook): Promise<Guestbook> {
