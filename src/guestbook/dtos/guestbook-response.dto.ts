@@ -19,6 +19,9 @@ export class GuestbookResponseDto {
     author_display_name: string;  // 작성자 표시명만 노출
 
     @Expose()
+    current_author_name: string;  // 현재 작성자 표시명
+
+    @Expose()
     isSecret: boolean;
 
     @Expose()

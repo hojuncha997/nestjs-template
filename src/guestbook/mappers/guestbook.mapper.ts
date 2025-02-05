@@ -9,39 +9,39 @@ import { UpdateGuestbookDto } from '../dtos/update-guestbook.dto';
 @Injectable()
 export class GuestbookMapper {
    toEntity(dto: CreateGuestbookDto): Guestbook {
-       const guestbook = new Guestbook();
+       const entity = new Guestbook();
        
        // 필수 필드
-       guestbook.title = dto.title;
-       guestbook.content = dto.content;
+       entity.title = dto.title;
+       entity.content = dto.content;
     //    guestbook.author = dto.author;
 
        // 선택적 필드들은 undefined 체크
        if (dto.category) {
-           guestbook.category = dto.category;
+           entity.category = dto.category;
        }
 
        if (dto.isSecret) {
-           guestbook.isSecret = dto.isSecret;
+           entity.isSecret = dto.isSecret;
        }
        
        if (dto.slug) {
-           guestbook.slug = dto.slug;
+           entity.slug = dto.slug;
        }
 
        if (dto.tags) {
-           guestbook.tags = dto.tags;
+           entity.tags = dto.tags;
        }
 
        if (dto.thumbnail) {
-           guestbook.thumbnail = dto.thumbnail;
+           entity.thumbnail = dto.thumbnail;
        }
 
        // 기본값이 있는 필드들
-       guestbook.status = dto.status || GuestbookStatus.PUBLISHED;
-       guestbook.isFeatured = dto.isFeatured || false;
+       entity.status = dto.status || GuestbookStatus.PUBLISHED;
+       entity.isFeatured = dto.isFeatured || false;
 
-       return guestbook;
+       return entity;
    }
 
    toDto(entity: Guestbook): GuestbookResponseDto {
@@ -52,8 +52,10 @@ export class GuestbookMapper {
        dto.uuid = entity.uuid;
        dto.title = entity.title;
        dto.content = entity.content;
-    //    dto.author_display_name = entity.author.nickname || entity.author.email;
-       dto.author_display_name = entity.current_author_name;
+    //    dto.author_id = entity.author_id;
+    //    dto.author_display_name = entity.author_display_name;
+       dto.author_display_name = entity.author_display_name;
+       dto.current_author_name = entity.current_author_name;
        dto.isSecret = entity.isSecret;
        dto.category = entity.category;
        dto.slug = entity.slug;
