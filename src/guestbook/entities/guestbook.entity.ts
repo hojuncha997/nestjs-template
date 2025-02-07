@@ -25,7 +25,8 @@ export class Guestbook {
     id: number;
 
     // public_id 컬럼 길이를 10으로 변경
-    @Column({ unique: true, length: 10 })
+    @Column({ unique: true, length: 10, nullable: true })   // 임시로 nullable: true 추가
+    // @Column({ unique: true, length: 10, nullable: false })
     public_id: string;
 
     @Column()

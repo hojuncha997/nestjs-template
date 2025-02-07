@@ -50,5 +50,11 @@ export const getTypeOrmConfig = async (
         keepConnectionAlive: true,
         // SSL 설정: 운영 환경에서는 SSL 활성화
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    };
+
+        // 마이그레이션 설정
+        migrations: [__dirname + '/../migrations/**/*{.ts,.js}'],
+        migrationsRun: true,
+        // 마이그레이션 테이블 이름
+        migrationsTableName: 'migrations',
+    };``
 }; 

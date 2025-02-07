@@ -21,6 +21,8 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    // TypeORM CLI가 데코레이터와 메타데이터를 제대로 처리할 수 있도록 tsconfig.json에 필요한 설정을 추가
+    "noFallthroughCasesInSwitch": false,
+    "strictPropertyInitialization": false
   }
 }

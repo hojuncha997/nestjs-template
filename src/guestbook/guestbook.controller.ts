@@ -8,7 +8,8 @@ import {
     Body, 
     Query, 
     Headers,
-    UseGuards
+    UseGuards,
+    BadRequestException
 } from '@nestjs/common';
 import { GuestbookService } from './guestbook.service';
 import { CreateGuestbookDto } from './dtos/create-guestbook.dto';
@@ -34,8 +35,11 @@ export class GuestbookController {
     @Public()
     @Get(':slugAndId')
     async getGuestbook(@Param('slugAndId') slugAndId: string) {
-        const [slug, public_id] = slugAndId.split('-').reverse();
-        return await this.guestbookService.findGuestbookByPublicId(public_id);
+        const publicId = slugAndId.split('-').pop();
+        if (!publicId?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+        return await this.guestbookService.findGuestbookByPublicId(publicId);
     }
 
     // -- @public() 데코레이터가 없는 경우 { "message": "Unauthorized", "statusCode": 401 }반환
@@ -48,22 +52,39 @@ export class GuestbookController {
         return await this.guestbookService.createGuestbook(guestbook, member);
     }
 
-    @Put(':slugAndId')
+    @Put(':public_id')
     async updateGuestbook(
         @GetMember() member: Member,
-        @Param('slugAndId') slugAndId: string,
+        @Param('public_id') public_id: string,
         @Body() guestbook: UpdateGuestbookDto
     ) {
-        const [slug, public_id] = slugAndId.split('-').reverse();
         return await this.guestbookService.updateGuestbook(public_id, guestbook, member);
     }
 
-    @Delete(':slugAndId')
+    @Delete(':public_id')
     async deleteGuestbook(
         @GetMember() member: Member,
-        @Param('slugAndId') slugAndId: string
+        @Param('public_id') public_id: string
     ) {
-        const [slug, public_id] = slugAndId.split('-').reverse();
         return await this.guestbookService.deleteGuestbook(public_id, member);
     }
+
+    // @Put(':slugAndId')
+    // async updateGuestbook(
+    //     @GetMember() member: Member,
+    //     @Param('slugAndId') slugAndId: string,
+    //     @Body() guestbook: UpdateGuestbookDto
+    // ) {
+    //     const [slug, public_id] = slugAndId.split('-').reverse();
+    //     return await this.guestbookService.updateGuestbook(public_id, guestbook, member);
+    // }
+
+    // @Delete(':slugAndId')
+    // async deleteGuestbook(
+    //     @GetMember() member: Member,
+    //     @Param('slugAndId') slugAndId: string
+    // ) {
+    //     const [slug, public_id] = slugAndId.split('-').reverse();
+    //     return await this.guestbookService.deleteGuestbook(public_id, member);
+    // }
 }

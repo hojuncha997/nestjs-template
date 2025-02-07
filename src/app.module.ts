@@ -6,7 +6,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
+// Nestjs의 ConfigModule을 사용하여 환경 변수를 로드하는 방법. 즉 런타임 설정을 위한 것
 import databaseConfig from './config/database.config';
+// import dataSource from 'dataSource'; 이건 typeorm 마이그레이션만을 위해 사용
+
 import { getTypeOrmConfig } from './config/typeorm.config';
 import { PostsModule } from './posts/posts.module';
 import { GuestbookModule } from './guestbook/guestbook.module';
