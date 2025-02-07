@@ -5,7 +5,7 @@ import { Expose } from 'class-transformer';
 export class GuestbookResponseDto {
     // id: number;
     @Expose()
-    uuid: string;
+    public_id: string;
     
     // author: string;
 

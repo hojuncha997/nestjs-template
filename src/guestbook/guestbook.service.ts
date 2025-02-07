@@ -4,7 +4,7 @@ import { CreateGuestbookDto } from './dtos/create-guestbook.dto';
 import { UpdateGuestbookDto } from './dtos/update-guestbook.dto';
 import { GuestbookResponseDto } from './dtos/guestbook-response.dto';
 import { GuestbookMapper } from './mappers/guestbook.mapper';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { GetGuestbooksQueryDto } from './dtos/get-guestbook-query.dto';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
 import { Member } from '../members/entities/member.entity';
@@ -101,38 +101,50 @@ export class GuestbookService {
         };
     }
 
-    async findGuestbookByUuid(uuid: string): Promise<GuestbookResponseDto | null> {
-        const guestbookEntity = await this.guestbookRepository.findGuestbookByUuid(uuid);
+    async findGuestbookByPublicId(public_id: string): Promise<GuestbookResponseDto | null> {
+        const guestbookEntity = await this.guestbookRepository.findGuestbookByPublicId(public_id);
         if (!guestbookEntity) {
-            throw new NotFoundException(`Guestbook with UUID "${uuid}" not found`);
+            throw new NotFoundException(`Guestbook with ID "${public_id}" not found`);
         }
 
         return this.guestbookMapper.toDto(guestbookEntity);
     }
 
     async createGuestbook(guestbookDto: CreateGuestbookDto, member: Member): Promise<GuestbookResponseDto> {
-        const guestbook = this.guestbookMapper.toEntity(guestbookDto);
+        const MAX_RETRIES = 3;
+        let retryCount = 0;
+        
+        while (retryCount < MAX_RETRIES) {
+            try {
+                const guestbook = this.guestbookMapper.toEntity(guestbookDto);
+                
+                const displayName = member.nickname || member.email;
+                guestbook.author = member;
+                guestbook.author_display_name = displayName;
+                guestbook.current_author_name = displayName;
 
-        const displayName = member.nickname || member.email;
-          // 작성자 정보 추가
-        guestbook.author = member;
-        // guestbook.author_id = member.id; 엔티티에서 명시적인 author_id 속성을 삭제하고 author 객체를 사용하도록 수정
-        // guestbook.author.id = member.id; 굳이 사용하려면 이렇게 사용해야 함
-        guestbook.author_display_name = displayName;
-        guestbook.current_author_name = displayName;
-
-        const savedGuestbook = await this.guestbookRepository.createGuestbook(guestbook);
-        return this.guestbookMapper.toDto(savedGuestbook);
+                const savedGuestbook = await this.guestbookRepository.createGuestbook(guestbook);
+                return this.guestbookMapper.toDto(savedGuestbook);
+                
+            } catch (error) {
+                // TypeORM unique constraint violation error
+                if (error.code === '23505' && error.detail?.includes('public_id') && retryCount < MAX_RETRIES - 1) {
+                    retryCount++;
+                    console.log(`nanoid collision occurred. Retrying... (${retryCount}/${MAX_RETRIES})`);
+                    continue;
+                }
+                // 다른 에러이거나 최대 재시도 횟수를 초과한 경우
+                throw new ConflictException('방명록 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+            }
+        }
     }
 
-    async updateGuestbook(uuid: string, guestbookDto: UpdateGuestbookDto, member: Member): Promise<GuestbookResponseDto> {
-        const guestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
+    async updateGuestbook(public_id: string, guestbookDto: UpdateGuestbookDto, member: Member): Promise<GuestbookResponseDto> {
+        const guestbook = await this.guestbookRepository.findGuestbookByPublicId(public_id);
         if (!guestbook) {
             throw new NotFoundException('방명록을 찾을 수 없습니다.');
         }
         
-        // 작성자 본인만 수정 가능
-        // if (guestbook.author.id !== member.id) {
         if (guestbook.author.id !== member.id) {
             throw new ForbiddenException('방명록을 수정할 권한이 없습니다.');
         }
@@ -142,19 +154,17 @@ export class GuestbookService {
         return this.guestbookMapper.toDto(savedGuestbook);
     }
 
-    async deleteGuestbook(uuid: string, member: Member): Promise<void> {
-        const guestbook = await this.guestbookRepository.findGuestbookByUuid(uuid);
+    async deleteGuestbook(public_id: string, member: Member): Promise<void> {
+        const guestbook = await this.guestbookRepository.findGuestbookByPublicId(public_id);
         if (!guestbook) {
             throw new NotFoundException('방명록을 찾을 수 없습니다.');
         }
 
-        // 작성자 본인만 삭제 가능
-        // if (guestbook.author_id !== member.id) {
         if (guestbook.author.id !== member.id) {
             throw new ForbiddenException('방명록을 삭제할 권한이 없습니다.');
         }
 
-        await this.guestbookRepository.deleteGuestbook(uuid);
+        await this.guestbookRepository.deleteGuestbook(public_id);
     }
 
 

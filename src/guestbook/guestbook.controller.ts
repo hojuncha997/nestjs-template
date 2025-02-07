@@ -32,9 +32,10 @@ export class GuestbookController {
     }
 
     @Public()
-    @Get(':uuid')
-    async getGuestbook(@Param('uuid') uuid: string) {
-        return await this.guestbookService.findGuestbookByUuid(uuid);
+    @Get(':slugAndId')
+    async getGuestbook(@Param('slugAndId') slugAndId: string) {
+        const [slug, public_id] = slugAndId.split('-').reverse();
+        return await this.guestbookService.findGuestbookByPublicId(public_id);
     }
 
     // -- @public() 데코레이터가 없는 경우 { "message": "Unauthorized", "statusCode": 401 }반환
@@ -47,20 +48,22 @@ export class GuestbookController {
         return await this.guestbookService.createGuestbook(guestbook, member);
     }
 
-    @Put(':uuid')
+    @Put(':slugAndId')
     async updateGuestbook(
         @GetMember() member: Member,
-        @Param('uuid') uuid: string, 
+        @Param('slugAndId') slugAndId: string,
         @Body() guestbook: UpdateGuestbookDto
     ) {
-        return await this.guestbookService.updateGuestbook(uuid, guestbook, member);
+        const [slug, public_id] = slugAndId.split('-').reverse();
+        return await this.guestbookService.updateGuestbook(public_id, guestbook, member);
     }
 
-    @Delete(':uuid')
+    @Delete(':slugAndId')
     async deleteGuestbook(
         @GetMember() member: Member,
-        @Param('uuid') uuid: string
+        @Param('slugAndId') slugAndId: string
     ) {
-        return await this.guestbookService.deleteGuestbook(uuid, member);
+        const [slug, public_id] = slugAndId.split('-').reverse();
+        return await this.guestbookService.deleteGuestbook(public_id, member);
     }
 }

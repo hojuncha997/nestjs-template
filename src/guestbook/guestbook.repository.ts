@@ -20,8 +20,8 @@ export class GuestbookRepository extends Repository<Guestbook> {
         return await this.repository.find();
     }
 
-    async findGuestbookByUuid(uuid: string): Promise<Guestbook | null> {
-        return await this.repository.findOne({ where: { uuid: uuid } });
+    async findGuestbookByPublicId(public_id: string): Promise<Guestbook | null> {
+        return await this.repository.findOne({ where: { public_id } });
     }
 
     async createGuestbook(guestbook: Guestbook): Promise<Guestbook> {
@@ -32,7 +32,7 @@ export class GuestbookRepository extends Repository<Guestbook> {
         return await this.saveGuestbook(guestbook);
     }
 
-    async deleteGuestbook(uuid: string): Promise<void> {
-        await this.repository.delete(uuid);
+    async deleteGuestbook(public_id: string): Promise<void> {
+        await this.repository.delete({ public_id });
     }
 }

@@ -3,50 +3,45 @@
 import { GuestbookStatus } from '@common/enums/guestbook-status.enum';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { Member } from '@members/entities/member.entity';
-import { v4 as uuidv4 } from 'uuid';
+// import { customAlphabet } from 'nanoid/non-secure';  // customAlphabet 사용
+// import { randomBytes } from 'crypto';  // crypto 모듈 import 방식 변경
+// import { nanoid } from 'nanoid';  // crypto 대신 nanoid 사용
+import { init } from '@paralleldrive/cuid2';
+
+// URL-friendly 문자 생성기 (10자리)
+// const generateId = () => {
+//     const bytes = randomBytes(8); // 8바이트 = 64비트의 랜덤 데이터
+//     return bytes.toString('base64url').slice(0, 10); // base64url은 URL-safe한 문자만 사용
+// };
+// const generateId = () => nanoid(10);  // nanoid로 10자리 ID 생성
+// const generateId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 10);
+const createId = init({ length: 10 });
 
 @Entity('guestbook')
-@Index(['uuid'], { unique: true })  // 게시물 식별을 위한 기본 인덱스
+@Index(['public_id'], { unique: true })  // uuid 인덱스를 public_id로 변경
 @Index(['status'])    // 발행된 게시물 목록 조회용
 export class Guestbook {
     @PrimaryGeneratedColumn()
     id: number;
 
-    // @Column('uuid', {unique: true})
-    // // uuid: string = uuidv4();
-    // uuid: string;
-    // @BeforeInsert() //uuid를 base64로 변환하여 저장
-    // generateUuid() {
-    //     // 1. 일반 UUID 생성
-    //     const fullUuid = uuidv4(); // 예: '123e4567-e89b-12d3-a456-426614174000'
-    //     // 2. 하이픈 제거
-    //     const plainUuid = fullUuid.replace(/-/g, ''); // '123e4567e89b12d3a456426614174000'
-    //     // 3. 16진수 문자열을 바이너리 버퍼로 변환
-    //     const buffer = Buffer.from(plainUuid, 'hex');
-    //     // 4. 버퍼를 base64로 인코딩
-    //     let base64Uuid = buffer.toString('base64'); // 'Ej5FZ+ibEtOkVkJmEBdAAA=='
-    //     // 5. URL 안전하게 만들기
-    //     this.uuid = base64Uuid
-    //         .replace(/\+/g, '-') // '+' 문자를 '-'로 대체
-    //         .replace(/\//g, '_') // '/' 문자를 '_'로 대체
-    //         .replace(/=/g, '');  // 패딩 문자 '=' 제거
-    // }
-    // 위처럼 하면 uuid칼럼에 uuid가 아닌 형식이 들어가려고 하여 오류 발생. 그렇지 않으려면 uuid를 그냥 사용하거나 아니면 칼럼을 text타입으로 설정하면 됨
-    // 그냥 uuid를 사용하려고 함
+    // public_id 컬럼 길이를 10으로 변경
+    @Column({ unique: true, length: 10 })
+    public_id: string;
 
-    @Column('uuid', {unique: true})
-    uuid: string = uuidv4();
     @Column()
     slug: string;
 
     @BeforeInsert()
-    generateSlug() {
-        if (!this.slug) {
-            // this.slug = this.title
-            //     .toLowerCase()
-            //     .replace(/[^a-z0-9]+/g, '-')
-            //     .replace(/^-+|-+$/g, '');
-            this.slug = '';
+    generatePublicIdAndSlug() {
+        // uuid 생성
+        // this.public_id = generateId();
+        this.public_id = createId();
+        
+        if (!this.slug && this.title) {
+            this.slug = this.title
+                .toLowerCase()
+                .replace(/[^a-z0-9가-힣]+/g, '-')
+                .replace(/^-+|-+$/g, '');
         }
     }
 
@@ -102,8 +97,8 @@ export class Guestbook {
     updatedAt: Date;
 
     @Column({
-        type: 'enum',
-        enum: GuestbookStatus,
+        type: 'varchar',  // 데이터베이스에는 varchar로 저장
+        enum: GuestbookStatus,  // 애플리케이션에서는 enum으로 처리
         default: GuestbookStatus.PUBLISHED
     })
     status: GuestbookStatus;

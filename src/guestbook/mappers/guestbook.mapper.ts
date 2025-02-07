@@ -49,7 +49,7 @@ export class GuestbookMapper {
        
        // 기본 필드
        // dto.id = entity.id;
-       dto.uuid = entity.uuid;
+       dto.public_id = entity.public_id;
        dto.title = entity.title;
        dto.content = entity.content;
     //    dto.author_id = entity.author_id;
