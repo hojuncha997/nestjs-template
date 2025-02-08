@@ -35,10 +35,19 @@ export class GuestbookController {
     @Public()
     @Get(':slugAndId')
     async getGuestbook(@Param('slugAndId') slugAndId: string) {
-        const publicId = slugAndId.split('-').pop();
+        // URL 디코딩
+        const decodedSlugAndId = decodeURIComponent(slugAndId);
+        // console.log('Received URL:', slugAndId);
+        // console.log('Decoded URL:', decodedSlugAndId);
+        
+        // 마지막 하이픈 이후의 문자열을 publicId로 사용
+        const lastHyphenIndex = decodedSlugAndId.lastIndexOf('-');
+        const publicId = decodedSlugAndId.substring(lastHyphenIndex + 1);
+        
         if (!publicId?.match(/^[a-z0-9]{10}$/i)) {
             throw new BadRequestException('Invalid public_id format');
         }
+        
         return await this.guestbookService.findGuestbookByPublicId(publicId);
     }
 

@@ -29,20 +29,25 @@ export class Guestbook {
     // @Column({ unique: true, length: 10, nullable: false })
     public_id: string;
 
-    @Column()
+    @Column({ length: 100, nullable: true })  // 길이 제한 추가
     slug: string;
 
     @BeforeInsert()
     generatePublicIdAndSlug() {
-        // uuid 생성
-        // this.public_id = generateId();
         this.public_id = createId();
         
+        // slug가 비어있는 경우에만 백업으로 생성
         if (!this.slug && this.title) {
+            console.log('BeforeInsert - Creating backup slug from title:', this.title);
             this.slug = this.title
+                .trim()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w\-가-힣]/g, '')
                 .toLowerCase()
-                .replace(/[^a-z0-9가-힣]+/g, '-')
-                .replace(/^-+|-+$/g, '');
+                .replace(/-+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .substring(0, 100);
+            console.log('BeforeInsert - Generated backup slug:', this.slug);
         }
     }
 

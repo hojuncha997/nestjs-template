@@ -1,6 +1,7 @@
 import { IsOptional, IsInt, IsString, Min, Max, IsISO8601 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PostStatus } from '@common/enums/post-status.enum';
+import { GuestbookStatus } from '@common/enums/guestbook-status.enum';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
 import { MaxDateRange } from '@common/custom-validators/max-date-range';
 
@@ -28,7 +29,7 @@ export class GetGuestbooksQueryDto {
 
     @IsOptional()
     @IsString()
-    status?: PostStatus;
+    status?: GuestbookStatus;
 
     @IsOptional()
     @IsString()

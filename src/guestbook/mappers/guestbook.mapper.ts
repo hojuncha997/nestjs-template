@@ -16,6 +16,24 @@ export class GuestbookMapper {
        entity.content = dto.content;
     //    guestbook.author = dto.author;
 
+       // 슬러그 생성 로직
+       if (dto.title) {
+           console.log('Creating slug from title:', dto.title);  // 원본 타이틀
+           const slug = dto.title
+               .trim()
+               .replace(/\s+/g, '-')  // 먼저 공백을 하이픈으로
+               .replace(/[^\w\-\u3131-\u318E\uAC00-\uD7A3]/g, '')  // 한글(자음/모음 포함), 영문, 숫자, 하이픈만 허용
+               .toLowerCase()
+               .replace(/-+/g, '-')   // 중복 하이픈 제거
+               .replace(/^-+|-+$/g, '')  // 시작과 끝의 하이픈 제거
+               .substring(0, 100);
+           
+           console.log('Generated slug:', slug);  // 생성된 슬러그
+           entity.slug = slug;
+       } else if (dto.slug) {
+           entity.slug = dto.slug;
+       }
+
        // 선택적 필드들은 undefined 체크
        if (dto.category) {
            entity.category = dto.category;
@@ -25,10 +43,6 @@ export class GuestbookMapper {
            entity.isSecret = dto.isSecret;
        }
        
-       if (dto.slug) {
-           entity.slug = dto.slug;
-       }
-
        if (dto.tags) {
            entity.tags = dto.tags;
        }

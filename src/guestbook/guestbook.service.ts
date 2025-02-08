@@ -116,7 +116,10 @@ export class GuestbookService {
         
         while (retryCount < MAX_RETRIES) {
             try {
+                // console.log('Original DTO:', guestbookDto);  // 원본 DTO 데이터
+                
                 const guestbook = this.guestbookMapper.toEntity(guestbookDto);
+                // console.log('After toEntity - slug:', guestbook.slug);  // Mapper에서 생성된 slug
                 
                 const displayName = member.nickname || member.email;
                 guestbook.author = member;
@@ -124,9 +127,11 @@ export class GuestbookService {
                 guestbook.current_author_name = displayName;
 
                 const savedGuestbook = await this.guestbookRepository.createGuestbook(guestbook);
-                return this.guestbookMapper.toDto(savedGuestbook);
+                // console.log('After save - slug:', savedGuestbook.slug);  // 저장 후 slug
                 
+                return this.guestbookMapper.toDto(savedGuestbook);
             } catch (error) {
+                // console.error('Error in createGuestbook:', error);  // 에러 로깅
                 // TypeORM unique constraint violation error
                 if (error.code === '23505' && error.detail?.includes('public_id') && retryCount < MAX_RETRIES - 1) {
                     retryCount++;
