@@ -1,13 +1,24 @@
 // src/posts/dto/post-response.dto.ts
 
 import { PostStatus } from '@common/enums/post-status.enum';
+import { Expose } from 'class-transformer';
 
 export class PostResponseDto {
-    // id: number;
-    uuid: string;
+    @Expose()
+    public_id: string;
+    
+    @Expose()
     title: string;
+
+    @Expose()
     content: Record<string, any>;
-    author: string;
+
+    @Expose()
+    author_display_name: string;
+
+    @Expose()
+    current_author_name: string;
+
     category: string;
     slug: string;
     tags: string[];
@@ -21,4 +32,7 @@ export class PostResponseDto {
     viewCount: number;
     likeCount: number;
     commentCount: number;
+
+    @Expose()
+    isSecret: boolean;
 }

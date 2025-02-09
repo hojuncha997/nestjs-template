@@ -10,10 +10,6 @@ export class CreatePostDto {
     @IsObject()
     content: Record<string, any>;
 
-    @IsNotEmpty()
-    @IsString()
-    author: string;
-
     @IsOptional()
     @IsString()
     category?: string = 'uncategorized';
@@ -48,4 +44,8 @@ export class CreatePostDto {
     @IsOptional()
     @IsEnum(PostStatus)
     status?: PostStatus = PostStatus.PUBLISHED;
+
+    @IsOptional()
+    @IsBoolean()
+    isSecret?: boolean = false;
 }

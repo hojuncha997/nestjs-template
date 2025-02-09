@@ -13,7 +13,8 @@
     "paths": {
       "@common/*": ["src/common/*"],
       "@auth/*": ["src/auth/*"],
-      "@members/*": ["src/members/*"]
+      "@members/*": ["src/members/*"],
+      "@decorators/*": ["src/decorators/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

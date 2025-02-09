@@ -16,9 +16,9 @@ import { CreateGuestbookDto } from './dtos/create-guestbook.dto';
 import { UpdateGuestbookDto } from './dtos/update-guestbook.dto';
 import { GetGuestbooksQueryDto } from './dtos/get-guestbook-query.dto';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
-import { Public } from '../decorators/auth/public.decorator';
-import { GetMember } from '../decorators/auth/get-member.decorator';
-import { Member } from '../members/entities/member.entity';
+import { Public } from '@decorators/auth/public.decorator';
+import { GetMember } from '@decorators/auth/get-member.decorator';
+import { Member } from '@members/entities/member.entity';
 
 
 @Controller('guestbooks')

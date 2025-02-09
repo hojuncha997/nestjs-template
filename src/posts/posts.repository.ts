@@ -20,19 +20,19 @@ export class PostsRepository extends Repository<Post> {
         return await this.repository.find();
     }
 
-    async findPostByUuid(uuid: string): Promise<Post | null> {
-        return await this.repository.findOne({ where: { uuid: uuid } });
+    async findPostByPublicId(public_id: string): Promise<Post | null> {
+        return await this.repository.findOne({ where: { public_id } });
     }
 
     async createPost(post: Post): Promise<Post> {
-        return await this.savePost(post);
+        return await this.save(post);
     }
 
     async updatePost(post: Post): Promise<Post> {
         return await this.savePost(post);
     }
 
-    async deletePost(uuid: string): Promise<void> {
-        await this.repository.delete(uuid);
+    async deletePost(public_id: string): Promise<void> {
+        await this.repository.delete({ public_id });
     }
 }

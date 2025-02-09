@@ -7,6 +7,8 @@ import { PostMapper } from './mappers/post.mapper';
 import { NotFoundException } from '@nestjs/common';
 import { GetPostsQueryDto } from './dtos/get-post-query.dto';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
+import { Member } from '@members/entities/member.entity';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class PostsService {
@@ -100,27 +102,34 @@ export class PostsService {
         };
     }
 
-    async findPostByUuid(uuid: string): Promise<PostResponseDto | null> {
-        const postEntity = await this.postsRepository.findPostByUuid(uuid);
+    async findPostByPublicId(public_id: string): Promise<PostResponseDto | null> {
+        const postEntity = await this.postsRepository.findPostByPublicId(public_id);
         if (!postEntity) {
-            throw new NotFoundException(`Post with UUID "${uuid}" not found`);
+            throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
         return this.postMapper.toDto(postEntity);
     }
 
-    async createPost(createPostDto: CreatePostDto): Promise<PostResponseDto> {
+    async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostResponseDto> {
         const postEntity = this.postMapper.toEntity(createPostDto);
+        const displayName = member.nickname || member.email;
+        postEntity.author = member;
+        postEntity.author_display_name = displayName;
+        postEntity.current_author_name = displayName;
+        
         const savedPost = await this.postsRepository.createPost(postEntity);
         return this.postMapper.toDto(savedPost);
     }
 
-    async updatePost(uuid: string, updatePostDto: UpdatePostDto): Promise<PostResponseDto> {
-        // const postEntity = this.postMapper.updateEntity(post);
-        // const existingPost = await this.postRepository.findOneOrFail({ where: { id } });
-        const existingPost = await this.postsRepository.findPostByUuid(uuid);
+    async updatePost(public_id: string, updatePostDto: UpdatePostDto, member: Member): Promise<PostResponseDto> {
+        const existingPost = await this.postsRepository.findPostByPublicId(public_id);
         if (!existingPost) {
-            throw new NotFoundException(`Post with UUID "${uuid}" not found`);
+            throw new NotFoundException(`Post with ID "${public_id}" not found`);
+        }
+
+        if (existingPost.author.id !== member.id) {
+            throw new ForbiddenException('게시글을 수정할 권한이 없습니다.');
         }
                 
         const updatedPost = this.postMapper.updateEntity(existingPost, updatePostDto);
@@ -128,12 +137,24 @@ export class PostsService {
         return this.postMapper.toDto(savedPost);
     }
 
-    async deletePost(uuid: string): Promise<void> {
-        const existingPost = await this.postsRepository.findPostByUuid(uuid);
+    async deletePost(public_id: string, member: Member): Promise<void> {
+        const existingPost = await this.postsRepository.findPostByPublicId(public_id);
         if (!existingPost) {
-            throw new NotFoundException(`Post with UUID "${uuid}" not found`);
+            throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
-        await this.postsRepository.deletePost(uuid);
+        if (existingPost.author.id !== member.id) {
+            throw new ForbiddenException('게시글을 삭제할 권한이 없습니다.');
+        }
+
+        await this.postsRepository.deletePost(public_id);
+    }
+
+    // Member 정보 업데이트 시 호출되는 메서드
+    async updateAuthorDisplayNames(memberId: number, newDisplayName: string) {
+        await this.postsRepository.update(
+            { author: { id: memberId } },
+            { current_author_name: newDisplayName }
+        );
     }
 }
