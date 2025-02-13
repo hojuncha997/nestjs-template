@@ -2,13 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PostsRepository } from './posts.repository';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
-import { PostResponseDto } from './dtos/post-response.dto';
+import { PostDetailResponseDto } from './dtos/post-detail-response.dto';
 import { PostMapper } from './mappers/post.mapper';
 import { NotFoundException } from '@nestjs/common';
 import { GetPostsQueryDto } from './dtos/get-post-query.dto';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
 import { Member } from '@members/entities/member.entity';
 import { ForbiddenException } from '@nestjs/common';
+import { PostListResponseDto } from './dtos/post-list-response.dto';
+import { ListResponse } from '@common/types/list-response.types';
 
 @Injectable()
 export class PostsService {
@@ -22,7 +24,19 @@ export class PostsService {
     //     return this.postMapper.toDtoList(posts);
     // }
 
-    async findPosts(query: GetPostsQueryDto) {
+    // async findPosts(query: GetPostsQueryDto) {
+    async findPostList(query: GetPostsQueryDto): Promise<
+    ListResponse<PostListResponseDto>
+    // {
+    //     posts: PostListResponseDto[];
+    //     meta: {
+    //         total: number;
+    //         page: number;
+    //         limit: number;
+    //         totalPages: number;
+    //     };
+    // }
+    > {
         const { MAX_QUERY_LIMIT, DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } = QUERY_CONSTANTS;
 
         const limit = Math.min(query.limit || DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
@@ -89,29 +103,46 @@ export class PostsService {
             // TypeORM의 메서드. 쿼리 결과를 엔티티 객체의 배열로 반환
             .getMany();
     
+        // return {
+        //      //posts: posts,
+        //     //  posts: this.postMapper.toDtoList(posts),
+        //     //  메타 데이터
+        //     posts: this.postMapper.toListDtoList(posts),
+        //     meta: {
+        //         total,
+        //         page: page,
+        //         limit: limit,
+        //         totalPages: Math.ceil(total / limit)
+        //     }
+        // };
+
         return {
-            //posts: posts,
-            posts: this.postMapper.toDtoList(posts),
-            // 메타 데이터
+            data: this.postMapper.toListDtoList(posts),
             meta: {
                 total,
-                page: page,
-                limit: limit,
+                page,
+                limit,
                 totalPages: Math.ceil(total / limit)
             }
         };
     }
 
-    async findPostByPublicId(public_id: string): Promise<PostResponseDto | null> {
+
+
+
+
+    async findPostByPublicId(public_id: string): Promise<PostDetailResponseDto | null> {
         const postEntity = await this.postsRepository.findPostByPublicId(public_id);
         if (!postEntity) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
+        // 조회수 증가
+        await this.postsRepository.incrementViewCount(public_id);
         return this.postMapper.toDto(postEntity);
     }
 
-    async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostResponseDto> {
+    async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostDetailResponseDto> {
         const postEntity = this.postMapper.toEntity(createPostDto);
         const displayName = member.nickname || member.email;
         postEntity.author = member;
@@ -122,7 +153,7 @@ export class PostsService {
         return this.postMapper.toDto(savedPost);
     }
 
-    async updatePost(public_id: string, updatePostDto: UpdatePostDto, member: Member): Promise<PostResponseDto> {
+    async updatePost(public_id: string, updatePostDto: UpdatePostDto, member: Member): Promise<PostDetailResponseDto> {
         const existingPost = await this.postsRepository.findPostByPublicId(public_id);
         if (!existingPost) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);

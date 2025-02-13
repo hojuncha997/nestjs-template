@@ -1,9 +1,8 @@
-// src/posts/dto/post-response.dto.ts
-
 import { PostStatus } from '@common/enums/post-status.enum';
+import { CurationType } from '@common/enums/curation-type.enum';
 import { Expose } from 'class-transformer';
 
-export class PostResponseDto {
+export class PostListResponseDto {
     @Expose()
     public_id: string;
     
@@ -11,7 +10,7 @@ export class PostResponseDto {
     title: string;
 
     @Expose()
-    content: Record<string, any>;
+    excerpt: string;  // content 대신 excerpt만 포함
 
     @Expose()
     author_display_name: string;
@@ -35,4 +34,20 @@ export class PostResponseDto {
 
     @Expose()
     isSecret: boolean;
-}
+
+    // 새로운 필드들 (content 관련)
+    description?: string;
+    readingTime?: number;
+    publishedAt?: Date;
+    coverImageAlt?: string;
+    metaDescription?: string;
+    
+    // 큐레이션 정보
+    curation?: {
+        isCurated: boolean;
+        curatedAt: string | null;
+        curatedBy: string | null;
+        curationOrder: number;
+        curationType: CurationType[];
+    };
+} 

@@ -21,7 +21,12 @@ export class PostsRepository extends Repository<Post> {
     }
 
     async findPostByPublicId(public_id: string): Promise<Post | null> {
-        return await this.repository.findOne({ where: { public_id } });
+        // return await this.repository.findOne({ where: { public_id } });
+        return await this.repository
+            .createQueryBuilder('post')
+            .leftJoinAndSelect('post.author', 'author')
+            .where('post.public_id = :public_id', { public_id })
+            .getOne();
     }
 
     async createPost(post: Post): Promise<Post> {
@@ -34,5 +39,16 @@ export class PostsRepository extends Repository<Post> {
 
     async deletePost(public_id: string): Promise<void> {
         await this.repository.delete({ public_id });
+    }
+
+    async incrementViewCount(public_id: string): Promise<void> {
+        await this.repository
+            .createQueryBuilder()
+            .update(Post)
+            .set({
+                viewCount: () => 'view_count + 1'
+            })
+            .where('public_id = :public_id', { public_id })
+            .execute();
     }
 }

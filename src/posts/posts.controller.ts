@@ -8,6 +8,8 @@ import { UseGuards } from '@nestjs/common';
 import { Public } from '@decorators/auth/public.decorator';
 import { GetMember } from '@decorators/auth/get-member.decorator';
 import { Member } from '@members/entities/member.entity';
+import { PostListResponseDto } from './dtos/post-list-response.dto';
+import { ListResponse } from '@common/types/list-response.types';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -16,8 +18,22 @@ export class PostsController {
 
     @Public()
     @Get()
-    async getPosts(@Query() query: GetPostsQueryDto) {
-        return await this.postsService.findPosts(query);
+    // async getPosts(@Query() query: GetPostsQueryDto) {
+    async getPosts(@Query() query: GetPostsQueryDto): Promise<ListResponse<PostListResponseDto>> {
+        // {
+        // posts: PostListResponseDto[];
+        // meta: {
+        //     total: number;
+        //     page: number;
+        //     limit: number;
+        //     totalPages: number;
+        // };
+    // }
+
+        console.log('query', query);
+        const result = await this.postsService.findPostList(query);
+        console.log('result', result);
+        return result;
     }
 
     @Public()

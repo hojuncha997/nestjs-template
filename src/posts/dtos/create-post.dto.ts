@@ -1,5 +1,8 @@
 import { IsNotEmpty, IsString, IsObject, IsOptional, IsArray, IsBoolean, IsEnum } from 'class-validator';
 import { PostStatus } from '@common/enums/post-status.enum';
+import { ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CurationDto } from './curation.dto';
 
 export class CreatePostDto {
     @IsNotEmpty()
@@ -48,4 +51,21 @@ export class CreatePostDto {
     @IsOptional()
     @IsBoolean()
     isSecret?: boolean = false;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsString()
+    coverImageAlt?: string;
+
+    @IsOptional()
+    @IsString()
+    metaDescription?: string;
+
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => CurationDto)
+    curation?: CurationDto;
 }

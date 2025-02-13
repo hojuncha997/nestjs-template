@@ -5,6 +5,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { v4 as uuidv4 } from 'uuid';
 import { Member } from '@members/entities/member.entity';
 import { init } from '@paralleldrive/cuid2';
+import { CurationType } from '@common/enums/curation-type.enum';
 
 const createId = init({ length: 10 });
 
@@ -89,4 +90,46 @@ export class Post {
 
     @Column({default: false})
     isSecret: boolean;
+
+    @Column({ length: 50, nullable: true })
+    description: string;
+
+    @Column({ length: 300, nullable: true })
+    excerpt: string;
+
+    @Column({ type: 'int', nullable: true })
+    readingTime: number;
+
+    @Column({ type: 'timestamp', nullable: true })
+    publishedAt: Date;
+
+    @Column({ nullable: true })
+    coverImageAlt: string;
+
+    @Column({ length: 160, nullable: true })
+    metaDescription: string;
+
+    @Column({ type: 'int', default: 0 })
+    viewTimeInSeconds: number;
+
+    @Column('json', {
+        default: {
+            isCurated: false,
+            curatedAt: null,
+            curatedBy: null,
+            curationOrder: 0,
+            curationType: [],
+        }
+    })
+    curation: {
+        isCurated: boolean;
+        curatedAt: string | null;
+        curatedBy: string | null;
+        curationOrder: number;
+        curationType: CurationType[];
+        curationNote?: string;
+        curationStartDate?: string;
+        curationEndDate?: string;
+    };
+
 }
