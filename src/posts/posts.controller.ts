@@ -93,5 +93,19 @@ export class PostsController {
         return await this.postsService.getPostNavigation(public_id, { limit });
     }
 
+    @Public()
+    @Get(':public_id/related')
+    async getRelatedPosts(
+        @Param('public_id') public_id: string,
+        @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        return await this.postsService.getRelatedPosts(public_id, { limit });
+    }
    
 }

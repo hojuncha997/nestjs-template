@@ -9,13 +9,19 @@ import { PostsService } from './posts.service';
 import { PostsRepository } from './posts.repository';
 import { PostMapper } from './mappers/post.mapper';
 import { MembersModule } from '../members/members.module';
+import { PostRelationRepository } from './post-relation.repository';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Post]),
         MembersModule,
     ],
-    providers: [PostsService, PostsRepository, PostMapper],
+    providers: [
+        PostsService,
+        PostsRepository,
+        PostMapper,
+        PostRelationRepository
+    ],
     controllers: [PostsController], 
     // exports: [PostsService],
 })

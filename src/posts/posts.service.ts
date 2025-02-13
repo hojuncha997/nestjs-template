@@ -11,13 +11,16 @@ import { Member } from '@members/entities/member.entity';
 import { ForbiddenException } from '@nestjs/common';
 import { PostListResponseDto } from './dtos/post-list-response.dto';
 import { ListResponse } from '@common/types/list-response.types';
-import { LessThan, MoreThan } from 'typeorm';
+import { LessThan, MoreThan, Brackets } from 'typeorm';
+import { PostRelationRepository } from './post-relation.repository';
+import { PostRelation } from './entities/post-relation.entity';
 
 @Injectable()
 export class PostsService {
     constructor(
         private readonly postsRepository: PostsRepository, 
-        private readonly postMapper: PostMapper
+        private readonly postMapper: PostMapper,
+        private readonly postRelationRepository: PostRelationRepository
     ) {}
 
     // async findAllPosts(): Promise<PostResponseDto[]> {
@@ -224,5 +227,86 @@ export class PostsService {
             prev: this.postMapper.toListDtoList(prev),
             next: this.postMapper.toListDtoList(next)
         };
+    }
+
+    /**
+     * 특정 게시글의 연관 게시글 목록을 조회
+     * 1. 수동으로 설정된 연관 게시글을 우선 조회
+     * 2. 남은 개수만큼 자동으로 추천된 게시글을 조회 (같은 카테고리 + 태그 유사도 기반)
+     * 
+     * @param publicId 게시글의 public_id
+     * @param options.limit 조회할 최대 게시글 수
+     * @returns {manual: 수동설정된 연관글[], auto: 자동추천된 연관글[]}
+     */
+    async getRelatedPosts(publicId: string, options: { limit: number }) {
+        // 현재 게시글 조회
+        const currentPost = await this.postsRepository.findEntityByPublicId(publicId);
+        if (!currentPost) {
+            throw new NotFoundException('Post not found');
+        }
+
+        // 1. 수동으로 설정된 연관 게시글 조회
+        // post_relation 테이블에서 isManual이 true인 관계만 조회
+        const manuallyRelated = await this.postRelationRepository
+            .createQueryBuilder('relation')
+            .leftJoinAndSelect('relation.relatedPost', 'post')
+            .where('relation.sourcePost = :postId', { postId: currentPost.id })
+            .andWhere('relation.isManual = true')
+            .take(options.limit)
+            .getMany();
+
+        // 2. 자동 추천 게시글 조회 (수동 설정된 게시글 수를 제외한 만큼)
+        const remainingCount = options.limit - manuallyRelated.length;
+        
+        if (remainingCount > 0) {
+            // 2-1. 같은 카테고리의 글을 최신순으로 조회
+            const autoRelated = await this.postsRepository
+                .createQueryBuilder('post')
+                .where('post.id != :postId', { postId: currentPost.id }) // 현재 글 제외
+                .andWhere('post.category = :category', { 
+                    category: currentPost.category 
+                })
+                .orderBy('post.createdAt', 'DESC')
+                .take(remainingCount)
+                .getMany();
+
+            // 2-2. 조회된 게시글들을 태그 일치도에 따라 재정렬
+            // 현재 글과 공통 태그가 많은 순서대로 정렬
+            const sortedByTags = autoRelated.sort((a, b) => {
+                const aMatchCount = a.tags.filter(tag => currentPost.tags.includes(tag)).length;
+                const bMatchCount = b.tags.filter(tag => currentPost.tags.includes(tag)).length;
+                return bMatchCount - aMatchCount;
+            });
+
+            return {
+                manual: this.postMapper.toListDtoList(manuallyRelated.map(r => r.relatedPost)),
+                auto: this.postMapper.toListDtoList(sortedByTags)
+            };
+        }
+
+        // 수동 설정된 게시글만 반환
+        return {
+            manual: this.postMapper.toListDtoList(manuallyRelated.map(r => r.relatedPost)),
+            auto: []
+        };
+    }
+
+    // 수동 연관 게시글 설정을 위한 메서드
+    async setManualRelation(sourceId: string, relatedId: string) {
+        const [sourcePost, relatedPost] = await Promise.all([
+            this.postsRepository.findPostByPublicId(sourceId),
+            this.postsRepository.findPostByPublicId(relatedId)
+        ]);
+
+        if (!sourcePost || !relatedPost) {
+            throw new NotFoundException('Post not found');
+        }
+
+        const relation = new PostRelation();
+        relation.sourcePost = sourcePost;
+        relation.relatedPost = relatedPost;
+        relation.isManual = true;
+
+        return this.postRelationRepository.save(relation);
     }
 }

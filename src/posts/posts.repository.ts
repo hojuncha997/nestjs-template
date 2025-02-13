@@ -51,4 +51,11 @@ export class PostsRepository extends Repository<Post> {
             .where('public_id = :public_id', { public_id })
             .execute();
     }
+
+    async findEntityByPublicId(public_id: string): Promise<Post | null> {
+        return await this.repository
+            .createQueryBuilder('post')
+            .where('post.public_id = :public_id', { public_id })
+            .getOne();
+    }
 }
