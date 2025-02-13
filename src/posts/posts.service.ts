@@ -11,6 +11,7 @@ import { Member } from '@members/entities/member.entity';
 import { ForbiddenException } from '@nestjs/common';
 import { PostListResponseDto } from './dtos/post-list-response.dto';
 import { ListResponse } from '@common/types/list-response.types';
+import { LessThan, MoreThan } from 'typeorm';
 
 @Injectable()
 export class PostsService {
@@ -187,5 +188,41 @@ export class PostsService {
             { author: { id: memberId } },
             { current_author_name: newDisplayName }
         );
+    }
+
+    async getPostNavigation(publicId: string, options: { limit: number }) {
+        const currentPost = await this.findPostByPublicId(publicId);
+        
+        const [prev, next] = await Promise.all([
+            this.postsRepository.find({
+                where: {
+                    category: currentPost.category,
+                    createdAt: LessThan(currentPost.createdAt)
+                },
+                order: { createdAt: 'DESC' },
+                take: options.limit,
+                select: [
+                    'public_id', 'title', 'slug', 'category', 
+                    'createdAt', 'thumbnail', 'excerpt'
+                ]
+            }),
+            this.postsRepository.find({
+                where: {
+                    category: currentPost.category,
+                    createdAt: MoreThan(currentPost.createdAt)
+                },
+                order: { createdAt: 'ASC' },
+                take: options.limit,
+                select: [
+                    'public_id', 'title', 'slug', 'category', 
+                    'createdAt', 'thumbnail', 'excerpt'
+                ]
+            })
+        ]);
+
+        return {
+            prev: this.postMapper.toListDtoList(prev),
+            next: this.postMapper.toListDtoList(next)
+        };
     }
 }
