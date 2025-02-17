@@ -131,19 +131,39 @@ export class PostsService {
         };
     }
 
+    // 내부용 (조회수 증가 없음)
+    private async findPostEntityByPublicId(public_id: string) {
+        return await this.postsRepository.findPostByPublicId(public_id);
+    }
 
-
-
-
-    async findPostByPublicId(public_id: string): Promise<PostDetailResponseDto | null> {
-        const postEntity = await this.postsRepository.findPostByPublicId(public_id);
+    // 외부 API용 (조회수 증가 포함)
+    async findPostByPublicId(public_id: string, member?: Member) {
+        const postEntity = await this.findPostEntityByPublicId(public_id);
         if (!postEntity) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
         // 조회수 증가
         await this.postsRepository.incrementViewCount(public_id);
-        return this.postMapper.toDto(postEntity);
+
+        // DTO로 변환
+        const postDetailResponseDto = this.postMapper.toDto(postEntity);
+        console.log('---------$$$--postEntity.author.id: ', postEntity.author.id);
+        console.log('---------$$$--member.id: ', member?.id);
+
+        // member가 존재하고 게시글 작성자와 같은 경우  isAuthor를 true로 설정
+        if(member && postEntity.author.id === member.id) {
+            postDetailResponseDto.isAuthor = true;
+            console.log('---------@@@--member.id: ', member?.id);
+            console.log('---------@@@--postEntity.author.id: ', postEntity.author.id);
+        } 
+            console.log('---------###--member.id: ', member?.id);
+            console.log('---------###--postEntity.author.id: ', postEntity.author.id);
+        
+
+        const result = postDetailResponseDto;
+        console.log('---------$$$--result.isAuthor: ', result.isAuthor);
+        return result;
     }
 
     async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostDetailResponseDto> {
@@ -194,7 +214,7 @@ export class PostsService {
     }
 
     async getPostNavigation(publicId: string, options: { limit: number }) {
-        const currentPost = await this.findPostByPublicId(publicId);
+        const currentPost = await this.findPostEntityByPublicId(publicId);
         
         const [prev, next] = await Promise.all([
             this.postsRepository.find({

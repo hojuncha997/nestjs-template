@@ -37,6 +37,9 @@ export class PostDetailResponseDto {
     @Expose()
     isSecret: boolean;
 
+    @Expose()
+    isAuthor: boolean;
+
     // 새로운 필드들
     description?: string;
     excerpt?: string;

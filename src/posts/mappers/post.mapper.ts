@@ -129,6 +129,7 @@ export class PostMapper {
         postDetailResponseDto.author_display_name = entity.author_display_name;
         postDetailResponseDto.current_author_name = entity.current_author_name;
         postDetailResponseDto.isSecret = entity.isSecret;
+        postDetailResponseDto.isAuthor = false; // 기본값은 false
         postDetailResponseDto.category = entity.category;
         postDetailResponseDto.slug = entity.slug;
         postDetailResponseDto.tags = entity.tags;

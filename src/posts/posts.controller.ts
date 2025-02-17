@@ -30,20 +30,23 @@ export class PostsController {
         // };
     // }
 
-        console.log('query', query);
+        // console.log('query', query);
+        console.log('---------!!!--포스팅 목록 조회');
         const result = await this.postsService.findPostList(query);
         // console.log('result', result);
         return result;
     }
 
-    @Public()
-    @UseGuards(JwtAuthGuard)
     @Get(':slugAndId')
+    @Public()                  // Public 메타데이터를 먼저 설정
+    @UseGuards(JwtAuthGuard)  // 그 다음 가드가 이 메타데이터를 확인
     async getPost(
         @Param('slugAndId') slugAndId: string,
-        @GetMember(true) member: Member | null  // optional로 설정
+        @GetMember(true) member: Member | null
     ) {
-        console.log('-------------------------@@@@@-------member from PostDetail: ', member);
+        const requestId = Date.now();
+        console.log(`---------!!!--포스팅 상세 조회 Request ID: ${requestId}`);
+        console.log('---------!!!--member:', member);  // member 정보도 함께 출력
 
         const decodedSlugAndId = decodeURIComponent(slugAndId);
         const lastHyphenIndex = decodedSlugAndId.lastIndexOf('-');
@@ -52,8 +55,8 @@ export class PostsController {
         if (!publicId?.match(/^[a-z0-9]{10}$/i)) {
             throw new BadRequestException('Invalid public_id format');
         }
-        
-        return await this.postsService.findPostByPublicId(publicId);
+
+        return await this.postsService.findPostByPublicId(publicId, member);
     }
 
     
