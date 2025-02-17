@@ -12,7 +12,7 @@ import { PostListResponseDto } from './dtos/post-list-response.dto';
 import { ListResponse } from '@common/types/list-response.types';
 
 @Controller('posts')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 export class PostsController {
     constructor(private readonly postsService: PostsService) {}
 
@@ -32,13 +32,19 @@ export class PostsController {
 
         console.log('query', query);
         const result = await this.postsService.findPostList(query);
-        console.log('result', result);
+        // console.log('result', result);
         return result;
     }
 
     @Public()
+    @UseGuards(JwtAuthGuard)
     @Get(':slugAndId')
-    async getPost(@Param('slugAndId') slugAndId: string) {
+    async getPost(
+        @Param('slugAndId') slugAndId: string,
+        @GetMember(true) member: Member | null  // optional로 설정
+    ) {
+        console.log('-------------------------@@@@@-------member from PostDetail: ', member);
+
         const decodedSlugAndId = decodeURIComponent(slugAndId);
         const lastHyphenIndex = decodedSlugAndId.lastIndexOf('-');
         const publicId = decodedSlugAndId.substring(lastHyphenIndex + 1);
@@ -52,6 +58,7 @@ export class PostsController {
 
     
 
+    @UseGuards(JwtAuthGuard)
     @Post()
     async createPost(
         @GetMember() member: Member,
