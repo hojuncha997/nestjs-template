@@ -263,9 +263,10 @@ export class PostsService {
                     'slug', 
                     'category',
                     'createdAt', 
-                    'thumbnail'
+                    'thumbnail',
+                    'content'
                 ],
-                relations: ['meta']
+                relations: ['meta', 'stats']
             }),
             this.postsRepository.find({
                 where: {
@@ -281,9 +282,10 @@ export class PostsService {
                     'slug', 
                     'category',
                     'createdAt', 
-                    'thumbnail'
+                    'thumbnail',
+                    'content'
                 ],
-                relations: ['meta']
+                relations: ['meta', 'stats']
             })
         ]);
 
