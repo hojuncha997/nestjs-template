@@ -14,13 +14,22 @@ import { ListResponse } from '@common/types/list-response.types';
 import { LessThan, MoreThan, Brackets } from 'typeorm';
 import { PostRelationRepository } from './post-relation.repository';
 import { PostRelation } from './entities/post-relation.entity';
+import { PostStats } from './entities/post-stats.entity';
+import { PostStatsRepository } from './post-stats.repository';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+
 
 @Injectable()
 export class PostsService {
     constructor(
         private readonly postsRepository: PostsRepository, 
         private readonly postMapper: PostMapper,
-        private readonly postRelationRepository: PostRelationRepository
+        private readonly postRelationRepository: PostRelationRepository,
+        // @InjectRepository(PostStats) // 만약 커스텀 레포지토리를 사용하지 않는 경우, 이처럼 typeorm의 기본 레포지토리를 사용해야 함
+        // private readonly postStatsRepository: Repository<PostStats>
+        // 커스텀 레포지토리에는 @InjectRepository 처리가 돼 있음.
+        private readonly postStatsRepository: PostStatsRepository
     ) {}
 
     // async findAllPosts(): Promise<PostResponseDto[]> {
@@ -47,7 +56,10 @@ export class PostsService {
         const page = Math.max(query.page || DEFAULT_QUERY_PAGE, 1);
 
         // 쿼리 빌더 생성
-        const queryBuilder = this.postsRepository.createQueryBuilder('post');
+        const queryBuilder = this.postsRepository.createQueryBuilder('post')
+            .leftJoinAndSelect('post.stats', 'stats');  // stats 관계 추가: 목록에서 포스팅 통계 데이터 표시 목적
+
+
 
             // 시작일 필터
         if (query.startDate) {
@@ -174,6 +186,13 @@ export class PostsService {
         postEntity.current_author_name = displayName;
         
         const savedPost = await this.postsRepository.createPost(postEntity);
+
+        // PostStats 생성 및 연결
+        const postStats = new PostStats();
+        postStats.postId = savedPost.id;
+        postStats.post = savedPost;
+        await this.postStatsRepository.save(postStats);
+
         return this.postMapper.toDto(savedPost);
     }
 

@@ -140,9 +140,10 @@ export class PostMapper {
         // 메타 필드
         postDetailResponseDto.createdAt = entity.createdAt;
         postDetailResponseDto.updatedAt = entity.updatedAt;
-        postDetailResponseDto.viewCount = entity.viewCount;
-        postDetailResponseDto.likeCount = entity.likeCount;
-        postDetailResponseDto.commentCount = entity.commentCount;
+        postDetailResponseDto.viewCount = entity.stats ? entity.stats.viewCount : 0;
+        postDetailResponseDto.likeCount = entity.stats ? entity.stats.likeCount : 0;
+        postDetailResponseDto.commentCount = entity.stats ? entity.stats.commentCount : 0;
+        postDetailResponseDto.viewTimeInSeconds = entity.stats ? entity.stats.viewTimeInSeconds : 0;
 
         // 새로운 필드들 매핑
         postDetailResponseDto.description = entity.description;
@@ -151,8 +152,12 @@ export class PostMapper {
         postDetailResponseDto.readingTime = entity.readingTime;
         postDetailResponseDto.publishedAt = entity.publishedAt;
         postDetailResponseDto.coverImageAlt = entity.coverImageAlt;
-        postDetailResponseDto.viewTimeInSeconds = entity.viewTimeInSeconds;
-        postDetailResponseDto.curation = entity.curation;
+        postDetailResponseDto.metaDescription = entity.metaDescription;
+        
+        // 큐레이션 정보 (간소화된 버전)
+        if (entity.curation) {
+            postDetailResponseDto.curation = entity.curation;
+        }
 
         return postDetailResponseDto;
     }
@@ -207,9 +212,9 @@ export class PostMapper {
         // 메타 데이터
         dto.createdAt = entity.createdAt;
         dto.updatedAt = entity.updatedAt;
-        dto.viewCount = entity.viewCount;
-        dto.likeCount = entity.likeCount;
-        dto.commentCount = entity.commentCount;
+        dto.viewCount = entity.stats ? entity.stats.viewCount : 0;
+        dto.likeCount = entity.stats ? entity.stats.likeCount : 0;
+        dto.commentCount = entity.stats ? entity.stats.commentCount : 0;
         dto.isSecret = entity.isSecret;
 
         // 새로운 필드들

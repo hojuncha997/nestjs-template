@@ -1,12 +1,12 @@
 // src/posts/eitities/post.entity.ts
 
 import { PostStatus } from '@common/enums/post-status.enum';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, OneToOne, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Member } from '@members/entities/member.entity';
 import { init } from '@paralleldrive/cuid2';
 import { CurationType } from '@common/enums/curation-type.enum';
-
+import { PostStats } from './post-stats.entity';
 const createId = init({ length: 10 });
 
 @Entity('post')
@@ -63,6 +63,17 @@ export class Post {
     @UpdateDateColumn()
     updatedAt: Date;
 
+    @Column({type: 'timestamp', nullable: true})
+    publishedAt: Date;
+
+
+    @DeleteDateColumn()
+    deletedAt: Date;
+
+    @Column({ type: 'timestamp', nullable: true })
+    scheduledAt: Date;
+
+
     @Column({
         type: 'enum',
         enum: PostStatus,
@@ -76,14 +87,25 @@ export class Post {
     @Column('simple-json', { default: '[]' })
     tags: string[];
 
-    @Column({default: 0})
-    viewCount: number;
+    /*
+    stats역시 가상의 필드이다. 실제 DB의 post 테이블에는 이 필드가 컬럼으로 존재하지 않는다.
+    TypeORM이 Post 엔티티와 PopStats(post_stats) 엔티티 사이의 관계를 관리하기 위해 사용한다.
+    stats => stats.post는 PostStats 쪽의 post 필드와 양방향 매핑을 이루고 있음
 
-    @Column({default: 0})
-    likeCount: number;
+    코드에서는 아래와 같이 사용할 수 있다.
+    --------------------------------
+    // Post 엔티티에서 stats 접근
+    const viewCount = post.stats?.viewCount;
 
-    @Column({default: 0})
-    commentCount: number;
+    // PostStats 엔티티에서 post 접근
+    const postTitle = postStats.post.title;
+    
+    ***TypeORM이 relations 옵션을 통해 데이터를 조회했을 때만 가능
+    --------------------------------
+    */
+    @OneToOne(() => PostStats, stats => stats.post)
+    stats: PostStats;
+
 
     @Column({default: false})
     isFeatured: boolean;
@@ -100,17 +122,12 @@ export class Post {
     @Column({ type: 'int', nullable: true })
     readingTime: number;
 
-    @Column({ type: 'timestamp', nullable: true })
-    publishedAt: Date;
 
     @Column({ nullable: true })
     coverImageAlt: string;
 
     @Column({ length: 160, nullable: true })
     metaDescription: string;
-
-    @Column({ type: 'int', default: 0 })
-    viewTimeInSeconds: number;
 
     @Column('json', {
         default: {
@@ -131,5 +148,25 @@ export class Post {
         curationStartDate?: string;
         curationEndDate?: string;
     };
+
+
+    /*
+
+    //post-stats 테이블과 연결되는 컬럼으로 별도 분리
+
+    @Column({default: 0})
+    viewCount: number;
+
+    @Column({default: 0})
+    likeCount: number;
+
+    @Column({default: 0})
+    commentCount: number;
+
+    @Column({ type: 'int', default: 0 })
+    viewTimeInSeconds: number;
+
+    */
+
 
 }

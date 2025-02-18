@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
+import { PostStats } from './entities/post-stats.entity';
 
 @Injectable()
 export class PostsRepository extends Repository<Post> {
@@ -16,21 +17,38 @@ export class PostsRepository extends Repository<Post> {
         return await this.repository.save(post);
     }
 
+    // async findAllPosts(): Promise<Post[]> {
+    //     return await this.repository.find();
+    // }
     async findAllPosts(): Promise<Post[]> {
-        return await this.repository.find();
+        return await this.repository
+            .createQueryBuilder('post')
+            // stats 테이블과 조인 필요
+            .leftJoinAndSelect('post.stats', 'stats')
+            .getMany();
     }
 
     async findPostByPublicId(public_id: string): Promise<Post | null> {
-        // return await this.repository.findOne({ where: { public_id } });
         return await this.repository
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.author', 'author')
+            .leftJoinAndSelect('post.stats', 'stats')
             .where('post.public_id = :public_id', { public_id })
             .getOne();
     }
 
+    // async createPost(post: Post): Promise<Post> {
+    //     return await this.save(post);
+    // }
     async createPost(post: Post): Promise<Post> {
-        return await this.save(post);
+        const savedPost = await this.save(post);
+        
+        // PostStats 생성
+        const postStats = new PostStats();
+        postStats.postId = savedPost.id;
+        await this.manager.getRepository(PostStats).save(postStats);
+        
+        return savedPost;
     }
 
     async updatePost(post: Post): Promise<Post> {
@@ -42,19 +60,31 @@ export class PostsRepository extends Repository<Post> {
     }
 
     async incrementViewCount(public_id: string): Promise<void> {
-        await this.repository
+        const post = await this.findPostByPublicId(public_id);
+        if (!post) return;
+
+        await this.manager.getRepository(PostStats)
             .createQueryBuilder()
-            .update(Post)
+            .update(PostStats)
             .set({
                 viewCount: () => 'view_count + 1'
             })
-            .where('public_id = :public_id', { public_id })
+            .where('postId = :postId', { postId: post.id })
             .execute();
     }
+
+    // async findEntityByPublicId(public_id: string): Promise<Post | null> {
+    //     return await this.repository
+    //         .createQueryBuilder('post')
+    //         .where('post.public_id = :public_id', { public_id })
+    //         .getOne();
+    // }
 
     async findEntityByPublicId(public_id: string): Promise<Post | null> {
         return await this.repository
             .createQueryBuilder('post')
+            // stats 테이블과 조인 필요
+            .leftJoinAndSelect('post.stats', 'stats')
             .where('post.public_id = :public_id', { public_id })
             .getOne();
     }
