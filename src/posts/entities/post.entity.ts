@@ -7,6 +7,7 @@ import { Member } from '@members/entities/member.entity';
 import { init } from '@paralleldrive/cuid2';
 import { CurationType } from '@common/enums/curation-type.enum';
 import { PostStats } from './post-stats.entity';
+import { PostMeta } from './post-meta.entity';
 const createId = init({ length: 10 });
 
 @Entity('post')
@@ -106,6 +107,10 @@ export class Post {
     @OneToOne(() => PostStats, stats => stats.post)
     stats: PostStats;
 
+    // 포스트 메타 데이터 연결
+    @OneToOne(() => PostMeta, meta => meta.post)
+    meta: PostMeta;
+
 
     @Column({default: false})
     isFeatured: boolean;
@@ -113,21 +118,6 @@ export class Post {
     @Column({default: false})
     isSecret: boolean;
 
-    @Column({ length: 50, nullable: true })
-    description: string;
-
-    @Column({ length: 300, nullable: true })
-    excerpt: string;
-
-    @Column({ type: 'int', nullable: true })
-    readingTime: number;
-
-
-    @Column({ nullable: true })
-    coverImageAlt: string;
-
-    @Column({ length: 160, nullable: true })
-    metaDescription: string;
 
     @Column('json', {
         default: {
@@ -168,5 +158,25 @@ export class Post {
 
     */
 
+    /*
+    post-meta 테이블과 연결되는 컬럼으로 별도 분리
+    --------------------------------
 
+    @Column({ length: 50, nullable: true })
+    description: string;
+
+    @Column({ length: 300, nullable: true })
+    excerpt: string;
+
+    @Column({ type: 'int', nullable: true })
+    readingTime: number;    
+
+    @Column({ nullable: true })
+    coverImageAlt: string;
+
+    @Column({ length: 160, nullable: true })
+    metaDescription: string;
+
+    --------------------------------
+    */
 }

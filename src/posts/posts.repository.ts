@@ -33,6 +33,7 @@ export class PostsRepository extends Repository<Post> {
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.author', 'author')
             .leftJoinAndSelect('post.stats', 'stats')
+            .leftJoinAndSelect('post.meta', 'meta')
             .where('post.public_id = :public_id', { public_id })
             .getOne();
     }

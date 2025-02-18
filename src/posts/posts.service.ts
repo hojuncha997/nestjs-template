@@ -16,6 +16,8 @@ import { PostRelationRepository } from './post-relation.repository';
 import { PostRelation } from './entities/post-relation.entity';
 import { PostStats } from './entities/post-stats.entity';
 import { PostStatsRepository } from './post-stats.repository';
+import { PostMetaRepository } from './post-meta.repository';
+import { PostMeta } from './entities/post-meta.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
 
@@ -29,7 +31,8 @@ export class PostsService {
         // @InjectRepository(PostStats) // 만약 커스텀 레포지토리를 사용하지 않는 경우, 이처럼 typeorm의 기본 레포지토리를 사용해야 함
         // private readonly postStatsRepository: Repository<PostStats>
         // 커스텀 레포지토리에는 @InjectRepository 처리가 돼 있음.
-        private readonly postStatsRepository: PostStatsRepository
+        private readonly postStatsRepository: PostStatsRepository,
+        private readonly postMetaRepository: PostMetaRepository
     ) {}
 
     // async findAllPosts(): Promise<PostResponseDto[]> {
@@ -57,7 +60,8 @@ export class PostsService {
 
         // 쿼리 빌더 생성
         const queryBuilder = this.postsRepository.createQueryBuilder('post')
-            .leftJoinAndSelect('post.stats', 'stats');  // stats 관계 추가: 목록에서 포스팅 통계 데이터 표시 목적
+            .leftJoinAndSelect('post.stats', 'stats')
+            .leftJoinAndSelect('post.meta', 'meta');  // meta 관계 추가
 
 
 
@@ -187,11 +191,20 @@ export class PostsService {
         
         const savedPost = await this.postsRepository.createPost(postEntity);
 
-        // PostStats 생성 및 연결
+        // PostStats 생성
         const postStats = new PostStats();
         postStats.postId = savedPost.id;
-        postStats.post = savedPost;
         await this.postStatsRepository.save(postStats);
+
+        // PostMeta 생성
+        const postMeta = new PostMeta();
+        postMeta.postId = savedPost.id;
+        postMeta.description = createPostDto.description;
+        postMeta.excerpt = this.postMapper.generateExcerpt(createPostDto.content);
+        postMeta.readingTime = Math.ceil(this.postMapper.extractTextFromContent(createPostDto.content).split(' ').length / 200);
+        postMeta.coverImageAlt = createPostDto.coverImageAlt;
+        postMeta.metaDescription = createPostDto.metaDescription;
+        await this.postMetaRepository.save(postMeta);
 
         return this.postMapper.toDto(savedPost);
     }
@@ -244,9 +257,15 @@ export class PostsService {
                 order: { createdAt: 'DESC' },
                 take: options.limit,
                 select: [
-                    'public_id', 'title', 'slug', 'category', 
-                    'createdAt', 'thumbnail', 'excerpt'
-                ]
+                    'id',
+                    'public_id', 
+                    'title', 
+                    'slug', 
+                    'category',
+                    'createdAt', 
+                    'thumbnail'
+                ],
+                relations: ['meta']
             }),
             this.postsRepository.find({
                 where: {
@@ -256,9 +275,15 @@ export class PostsService {
                 order: { createdAt: 'ASC' },
                 take: options.limit,
                 select: [
-                    'public_id', 'title', 'slug', 'category', 
-                    'createdAt', 'thumbnail', 'excerpt'
-                ]
+                    'id',
+                    'public_id', 
+                    'title', 
+                    'slug', 
+                    'category',
+                    'createdAt', 
+                    'thumbnail'
+                ],
+                relations: ['meta']
             })
         ]);
 

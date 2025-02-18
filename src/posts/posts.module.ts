@@ -12,14 +12,16 @@ import { MembersModule } from '../members/members.module';
 import { PostRelationRepository } from './post-relation.repository';
 import { PostStats } from './entities/post-stats.entity';
 import { PostStatsRepository } from './post-stats.repository';
+import { PostMetaRepository } from './post-meta.repository';
+import { PostMeta } from './entities/post-meta.entity';
 @Module({
     imports: [
         // TypeOrmModule.forFeature()는 특정 모듈에서 사용할 엔티티들의 Repository를 등록하기 위한 설정
         // 이 설정이 있어야 모듈 내에서 @InjectRepository() 데코레이터를 사용할 수 있음
-        // 즉, forFeature()는 지정된 엔티티들([Post, PostStats])에 대한 Repository를 현재 모듈 스코프에서 사용할 수 있게 등록
+        // 즉, forFeature()는 지정된 엔티티들([Post, PostStats, PostMeta])에 대한 Repository를 현재 모듈 스코프에서 사용할 수 있게 등록
         // TypeORM의 Repository 패턴을 NestJS의 DI(의존성 주입) 시스템과 연결
         // 이를 통해 우리는 엔티티에 대한 데이터베이스 작업을 Repository 패턴으로 수행할 수 있음
-        TypeOrmModule.forFeature([Post, PostStats]),
+        TypeOrmModule.forFeature([Post, PostStats, PostMeta]),
         MembersModule,
     ],
     providers: [
@@ -28,6 +30,7 @@ import { PostStatsRepository } from './post-stats.repository';
         PostMapper,
         PostRelationRepository,
         PostStatsRepository,
+        PostMetaRepository,
     ],
     controllers: [PostsController], 
     // exports: [PostsService],
