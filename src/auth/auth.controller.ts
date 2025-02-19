@@ -177,11 +177,11 @@ async refresh(
   @Cookies('refresh_token') cookieToken: string,
 ) {
 
-  console.log('--------------------------------');
+  console.log('---------from auth controller: async refresh-----------------');
   console.log('authHeader:', authHeader);
   console.log('clientType:', clientType);
   console.log('cookieToken:', cookieToken);
-  console.log('--------------------------------');
+  console.log('-------------------------------------------------------------');
   let refreshToken = cookieToken;
   
   if (!refreshToken && authHeader) {// 쿠키에 없으면 헤더에서 찾음
