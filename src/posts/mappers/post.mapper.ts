@@ -87,18 +87,18 @@ export class PostMapper {
         entity.publishedAt = dto.status === PostStatus.PUBLISHED ? new Date() : null;
 
         // 큐레이션 정보 설정
-        if (dto.curation) {
-            entity.curation = {
-                isCurated: dto.curation.isCurated || false,
-                curatedAt: dto.curation.curatedAt,
-                curatedBy: dto.curation.curatedBy,
-                curationOrder: dto.curation.curationOrder || 0,
-                curationType: dto.curation.curationType || [],
-                curationNote: dto.curation.curationNote,
-                curationStartDate: dto.curation.curationStartDate,
-                curationEndDate: dto.curation.curationEndDate
-            };
-        }
+        // if (dto.curation) {
+        //     entity.curation = {
+        //         isCurated: dto.curation.isCurated || false,
+        //         curatedAt: dto.curation.curatedAt,
+        //         curatedBy: dto.curation.curatedBy,
+        //         curationOrder: dto.curation.curationOrder || 0,
+        //         curationType: dto.curation.curationType || [],
+        //         curationNote: dto.curation.curationNote,
+        //         curationStartDate: dto.curation.curationStartDate,
+        //         curationEndDate: dto.curation.curationEndDate
+        //     };
+        // }
 
         return entity;
     }
@@ -144,9 +144,9 @@ export class PostMapper {
         }
 
         // 큐레이션 정보
-        if (entity.curation) {
-            dto.curation = entity.curation;
-        }
+        // if (entity.curation) {
+        //     dto.curation = entity.curation;
+        // }
 
         return dto;
     }
@@ -165,12 +165,12 @@ export class PostMapper {
         if (dto.isFeatured !== undefined) entity.isFeatured = dto.isFeatured;
         if (dto.status !== undefined) entity.status = dto.status;
         if (dto.isSecret !== undefined) entity.isSecret = dto.isSecret;
-        if (dto.curation !== undefined) {
-            entity.curation = {
-                ...entity.curation,
-                ...dto.curation
-            };
-        }
+        // if (dto.curation !== undefined) {
+        //     entity.curation = {
+        //         ...entity.curation,
+        //         ...dto.curation
+        //     };
+        // }
 
         return entity;
     }
@@ -211,15 +211,15 @@ export class PostMapper {
         dto.metaDescription = entity.meta?.metaDescription || this.generateExcerpt(entity.content, 160);
 
         // 큐레이션 정보
-        if (entity.curation) {
-            dto.curation = {
-                isCurated: entity.curation.isCurated,
-                curatedAt: entity.curation.curatedAt,
-                curatedBy: entity.curation.curatedBy,
-                curationOrder: entity.curation.curationOrder,
-                curationType: entity.curation.curationType
-            };
-        }
+        // if (entity.curation) {
+        //     dto.curation = {
+        //         isCurated: entity.curation.isCurated,
+        //         curatedAt: entity.curation.curatedAt,
+        //         curatedBy: entity.curation.curatedBy,
+        //         curationOrder: entity.curation.curationOrder,
+        //         curationType: entity.curation.curationType
+        //     };
+        // }
 
         return dto;
     }

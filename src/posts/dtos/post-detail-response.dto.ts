@@ -48,14 +48,4 @@ export class PostDetailResponseDto {
     coverImageAlt?: string;
     metaDescription?: string;
     viewTimeInSeconds: number;
-    curation?: {
-        isCurated: boolean;
-        curatedAt: string | null;
-        curatedBy: string | null;
-        curationOrder: number;
-        curationType: CurationType[];
-        curationNote?: string;
-        curationStartDate?: string;
-        curationEndDate?: string;
-    };
 }

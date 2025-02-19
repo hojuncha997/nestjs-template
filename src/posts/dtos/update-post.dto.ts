@@ -1,9 +1,11 @@
 // src/posts/dto/update-post.dto.ts
 
-import { IsOptional, IsString, IsObject, IsArray, IsBoolean, IsEnum, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsObject, IsArray, IsBoolean, IsEnum, ValidateNested, IsNumber } from 'class-validator';
 import { PostStatus } from '@common/enums/post-status.enum';
-import { Type } from 'class-transformer';
-import { CurationDto } from './curation.dto';
+// import { Type } from 'class-transformer';
+// import { CurationDto } from './curation.dto';
+// import { CurationType } from '@common/enums/curation-type.enum';
+// import { PostCurationDto } from './post-curation.dto';
 
 export class UpdatePostDto {
     @IsOptional()
@@ -59,8 +61,41 @@ export class UpdatePostDto {
     @IsString()
     metaDescription?: string;
 
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => CurationDto)
-    curation?: Partial<CurationDto>;
+    // @IsOptional()
+    // @ValidateNested()
+    // @Type(() => PostCurationDto)
+    // curation?: Partial<PostCurationDto>;
+
+    // @IsOptional()
+    // @IsBoolean()
+    // isCurated?: boolean;
+
+    // @IsOptional()
+    // @IsString()
+    // curatedAt?: string | null;
+
+    // @IsOptional()
+    // @IsString()
+    // curatedBy?: string | null;
+
+    // @IsOptional()
+    // @IsNumber()
+    // curationOrder?: number;
+
+    // @IsOptional()
+    // @IsArray()
+    // @IsEnum(CurationType)
+    // curationType?: CurationType[];
+
+    // @IsOptional()
+    // @IsString()
+    // curationNote?: string;
+
+    // @IsOptional()
+    // @IsString()
+    // curationStartDate?: string | null;
+
+    // @IsOptional()
+    // @IsString()
+    // curationEndDate?: string | null;
 }

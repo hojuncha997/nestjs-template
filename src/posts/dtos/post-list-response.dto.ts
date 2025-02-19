@@ -45,9 +45,9 @@ export class PostListResponseDto {
     // 큐레이션 정보
     curation?: {
         isCurated: boolean;
-        curatedAt: string | null;
-        curatedBy: string | null;
         curationOrder: number;
-        curationType: CurationType[];
     };
+
+    isCurated: boolean;
+    curationOrder?: number;  // 목록에서는 최소한의 정보만
 } 

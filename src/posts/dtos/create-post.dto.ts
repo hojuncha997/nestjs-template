@@ -1,8 +1,9 @@
 import { IsNotEmpty, IsString, IsObject, IsOptional, IsArray, IsBoolean, IsEnum } from 'class-validator';
 import { PostStatus } from '@common/enums/post-status.enum';
-import { ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { CurationDto } from './curation.dto';
+// import { ValidateNested } from 'class-validator';
+// import { Type } from 'class-transformer';
+// import { CurationDto } from './curation.dto';
+// import { CurationType } from '@common/enums/curation-type.enum';
 
 export class CreatePostDto {
     @IsNotEmpty()
@@ -64,8 +65,17 @@ export class CreatePostDto {
     @IsString()
     metaDescription?: string;
 
-    @IsOptional()
-    @ValidateNested()
-    @Type(() => CurationDto)
-    curation?: CurationDto;
+    // @IsOptional()
+    // @ValidateNested()
+    // @Type(() => CurationDto)
+    // curation?: CurationDto;
+
+    // isCurated?: boolean;
+    // curatedAt?: string | null;
+    // curatedBy?: string | null;
+    // curationOrder?: number;
+    // curationType?: CurationType[];
+    // curationNote?: string;
+    // curationStartDate?: string | null;
+    // curationEndDate?: string | null;
 }

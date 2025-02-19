@@ -8,6 +8,7 @@ import { init } from '@paralleldrive/cuid2';
 import { CurationType } from '@common/enums/curation-type.enum';
 import { PostStats } from './post-stats.entity';
 import { PostMeta } from './post-meta.entity';
+import { PostCuration } from './post-curation.entity';
 const createId = init({ length: 10 });
 
 @Entity('post')
@@ -111,6 +112,9 @@ export class Post {
     @OneToOne(() => PostMeta, meta => meta.post)
     meta: PostMeta;
 
+    // PostCuration과의 관계 추가
+    @OneToOne(() => PostCuration, curation => curation.post)
+    curation: PostCuration;
 
     @Column({default: false})
     isFeatured: boolean;
@@ -119,26 +123,7 @@ export class Post {
     isSecret: boolean;
 
 
-    @Column('json', {
-        default: {
-            isCurated: false,
-            curatedAt: null,
-            curatedBy: null,
-            curationOrder: 0,
-            curationType: [],
-        }
-    })
-    curation: {
-        isCurated: boolean;
-        curatedAt: string | null;
-        curatedBy: string | null;
-        curationOrder: number;
-        curationType: CurationType[];
-        curationNote?: string;
-        curationStartDate?: string;
-        curationEndDate?: string;
-    };
-
+  
 
     /*
 
@@ -178,5 +163,31 @@ export class Post {
     metaDescription: string;
 
     --------------------------------
+    */
+
+    /*
+    post-curation 테이블과 연결되는 컬럼으로 별도 분리
+    --------------------------------
+
+    @Column('json', {
+        default: {
+            isCurated: false,
+            curatedAt: null,
+            curatedBy: null,
+            curationOrder: 0,
+            curationType: [],
+        }
+    })
+    curation: {
+        isCurated: boolean;
+        curatedAt: string | null;
+        curatedBy: string | null;
+        curationOrder: number;
+        curationType: CurationType[];
+        curationNote?: string;
+        curationStartDate?: string;
+        curationEndDate?: string;
+    };
+    --------------------------------    
     */
 }
