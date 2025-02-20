@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { PostStats } from './entities/post-stats.entity';
+import { PostStatus } from '@common/enums/post-status.enum';
 
 @Injectable()
 export class PostsRepository extends Repository<Post> {
@@ -28,14 +29,26 @@ export class PostsRepository extends Repository<Post> {
             .getMany();
     }
 
-    async findPostByPublicId(public_id: string): Promise<Post | null> {
-        return await this.repository
+    async findPostByPublicId(public_id: string, withDeleted: boolean = false): Promise<Post | null> {
+        const query = this.repository
             .createQueryBuilder('post')
             .leftJoinAndSelect('post.author', 'author')
             .leftJoinAndSelect('post.stats', 'stats')
             .leftJoinAndSelect('post.meta', 'meta')
-            .where('post.public_id = :public_id', { public_id })
-            .getOne();
+            .where('post.public_id = :public_id', { public_id });
+
+        if (withDeleted) {
+            query.withDeleted();
+        }
+
+        // 실제 실행되는 SQL 쿼리 로깅
+        // console.log('---------DEBUG--SQL Query:', query.getSql());
+        // console.log('---------DEBUG--Parameters:', { public_id });
+
+        const result = await query.getOne();
+        console.log('---------DEBUG--Raw Result:', result);
+
+        return result;
     }
 
     // async createPost(post: Post): Promise<Post> {
@@ -57,7 +70,34 @@ export class PostsRepository extends Repository<Post> {
     }
 
     async deletePost(public_id: string): Promise<void> {
-        await this.repository.delete({ public_id });
+          //    // 상태 코드만 반환
+        //    await this.repository.delete({ public_id }); 하드 딜리트  
+        // delete 대신 softDelete 사용
+        // await this.repository.softDelete({ public_id });
+
+            // 단일 쿼리로 처리
+        // await this.repository
+        //     .createQueryBuilder()
+        //     .update(Post)
+        //     .set({ 
+        //         status: PostStatus.DELETED,
+        //         deletedAt: new Date()
+        //     })
+        //     .where('public_id = :public_id', { public_id })
+        //     .execute();
+        await this.repository.manager.transaction(async (transactionalEntityManager) => {
+            await transactionalEntityManager
+                .createQueryBuilder()
+                .update(Post)
+                .set({ status: PostStatus.DELETED })
+                .where('public_id = :public_id', { public_id })
+                .execute();
+
+            await transactionalEntityManager
+                .softDelete(Post, { public_id });
+        });
+
+    
     }
 
     async incrementViewCount(public_id: string): Promise<void> {

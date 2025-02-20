@@ -70,6 +70,7 @@ export class PostsController {
         return await this.postsService.createPost(post, member);
     }
 
+    @UseGuards(JwtAuthGuard)
     @Put(':public_id')
     async updatePost(
         @GetMember() member: Member,
@@ -79,12 +80,22 @@ export class PostsController {
         return await this.postsService.updatePost(public_id, post, member);
     }
 
+    @UseGuards(JwtAuthGuard)
     @Delete(':public_id')
     async deletePost(
         @GetMember() member: Member,
         @Param('public_id') public_id: string
     ) {
-        return await this.postsService.deletePost(public_id, member);
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!decodedPublicId?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        console.log('---------!!!--포스팅 삭제');
+        console.log('---------!!!--public_id:', public_id);
+        console.log('---------!!!--member:', member.email);
+        return await this.postsService.deletePost(decodedPublicId, member);
     }
 
 

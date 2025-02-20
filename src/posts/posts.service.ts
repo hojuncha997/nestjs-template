@@ -18,6 +18,7 @@ import { PostStats } from './entities/post-stats.entity';
 import { PostStatsRepository } from './post-stats.repository';
 import { PostMetaRepository } from './post-meta.repository';
 import { PostMeta } from './entities/post-meta.entity';
+import { BadRequestException } from '@nestjs/common';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
 
@@ -225,13 +226,22 @@ export class PostsService {
     }
 
     async deletePost(public_id: string, member: Member): Promise<void> {
-        const existingPost = await this.postsRepository.findPostByPublicId(public_id);
+        // withDeleted: true로 설정하여 이미 삭제된 게시글도 조회 : 기본값은 false
+        const existingPost = await this.postsRepository.findPostByPublicId(public_id, false);
+        console.log('---------!!!--public_id:', public_id);
+        console.log('---------!!!--existingPost:', existingPost);
+
         if (!existingPost) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
         if (existingPost.author.id !== member.id) {
             throw new ForbiddenException('게시글을 삭제할 권한이 없습니다.');
+        }
+
+        // 이미 삭제된 게시글인지 확인
+        if (existingPost.deletedAt) {
+            throw new BadRequestException('이미 삭제된 게시글입니다.');
         }
 
         await this.postsRepository.deletePost(public_id);
