@@ -164,6 +164,7 @@ export class PostMapper {
 
         // 존재하는 필드만 업데이트
         if (dto.title !== undefined) entity.title = dto.title;
+        if (dto.content !== undefined) entity.content = dto.content;
         if (dto.category !== undefined) entity.category = dto.category;
         if (dto.slug !== undefined) entity.slug = dto.slug;
         if (dto.tags !== undefined) entity.tags = dto.tags;
