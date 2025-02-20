@@ -53,25 +53,26 @@ export class PostMapper {
             : truncated.substring(0, lastSpace) + '...';
     }
 
+    private generateSlugFromTitle(title: string): string {
+        return title
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-가-힣]/g, '')
+            .toLowerCase()
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .substring(0, 100);
+    }
+
     toEntity(dto: CreatePostDto): Post {
         const entity = new Post();
         
-        // 필수 필드
         entity.title = dto.title;
         entity.content = dto.content;
 
-        // 슬러그 생성 로직
+        // 슬러그 생성 로직을 함수 사용으로 변경
         if (dto.title) {
-            const slug = dto.title
-                .trim()
-                .replace(/\s+/g, '-')
-                .replace(/[^\w\-가-힣]/g, '')
-                .toLowerCase()
-                .replace(/-+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .substring(0, 100);
-            
-            entity.slug = slug;
+            entity.slug = this.generateSlugFromTitle(dto.title);
         } else if (dto.slug) {
             entity.slug = dto.slug;
         }
@@ -156,6 +157,11 @@ export class PostMapper {
     }
 
     updateEntity(entity: Post, dto: UpdatePostDto): Post {
+        // 타이틀이 변경되었고 새로운 슬러그가 제공되지 않은 경우 슬러그 자동 생성
+        if (dto.title !== undefined && dto.slug === undefined) {
+            entity.slug = this.generateSlugFromTitle(dto.title);
+        }
+
         // 존재하는 필드만 업데이트
         if (dto.title !== undefined) entity.title = dto.title;
         if (dto.category !== undefined) entity.category = dto.category;
