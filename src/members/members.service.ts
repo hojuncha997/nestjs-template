@@ -15,6 +15,7 @@ import { AuthProvider } from '@common/enums';
 import { SocialLoginDto } from '@auth/dto/social-login.dto';
 import { EmailUtil } from '@common/utils/email-encryption.util';
 import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
+import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
 
 @Injectable()
 export class MembersService {
@@ -53,7 +54,7 @@ export class MembersService {
     const hashedEmail = EmailUtil.hashEmail(createMemberDto.email);
 
     // 이메일 해시값으로 중복 체크
-    const existingMember = await this.membersRepository.findByHashedEmail(hashedEmail);
+    const existingMember = await this.membersRepository.findOneByHashedEmail(hashedEmail);
     if (existingMember) {
       throw new ConflictException('이미 존재하는 이메일입니다.');
     }
@@ -114,7 +115,11 @@ export class MembersService {
    * 이메일로 회원 찾기
    */
   async findOneByEmailWithPassword(email: string): Promise<Member | null> {
-    return this.membersRepository.findOneByEmailWithPassword(email);
+    const member = await this.membersRepository.findOneByEmailWithPassword(email);
+    if (!member) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+    return member;
   }
 
   /**
@@ -243,8 +248,9 @@ export class MembersService {
   /**
    * 비밀번호 재설정 토큰 생성
    */
-  async createPasswordResetToken(email: string): Promise<MemberResponseDto> {
-    const member = await this.findOneByEmailWithPassword(email);
+  async createPasswordResetToken(email: string): Promise<PasswordResetTokenResponseDto> {
+    const member = await this.membersRepository.findOneByEmail(email);
+
     if (!member) {
       throw new NotFoundException('회원을 찾을 수 없습니다.');
     }
@@ -254,7 +260,44 @@ export class MembersService {
     }
 
     const updatedMember = await this.membersRepository.createPasswordResetToken(member);
-    return MemberMapper.toDto(updatedMember);
+    
+    // 비밀번호 재설정 이메일 발송
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${updatedMember.passwordResetToken}`;
+    await this.emailService.send({
+      to: EmailUtil.decryptEmail(updatedMember.email),
+      subject: '비밀번호 재설정 안내',
+      template: 'password-reset',
+      context: {
+        name: updatedMember.name || updatedMember.email,
+        resetLink,
+        expiresIn: '30분'
+      }
+    });
+
+    return {
+      success: true,
+      message: '비밀번호 재설정 링크가 이메일로 전송되었습니다.'
+    };
+  }
+
+  /**
+   * 비밀번호 재설정 토큰 검증
+   */
+  async validatePasswordResetToken(token: string): Promise<PasswordResetTokenResponseDto> {
+    const member = await this.membersRepository.findOneByPasswordResetToken(token);
+    
+    if (!member) {
+      throw new BadRequestException('유효하지 않은 토큰입니다.');
+    }
+
+    if (member.passwordResetTokenExpiresAt < new Date()) {
+      throw new BadRequestException('만료된 토큰입니다. 비밀번호 재설정을 다시 요청해주세요.');
+    }
+
+    return {
+      success: true,
+      message: '유효한 토큰입니다.'
+    };
   }
 
   /**
@@ -272,7 +315,7 @@ export class MembersService {
    * 로그인 시도 횟수 증가 및 계정 잠금 처리
    */
   async incrementLoginAttempts(email: string): Promise<void> {
-    const member = await this.membersRepository.findByEmail(email);
+    const member = await this.membersRepository.findOneByEmail(email);
     if (!member) return;
 
     const loginAttempts = (member.loginAttempts || 0) + 1;
@@ -312,7 +355,7 @@ export class MembersService {
    */
   async findByEmail(email: string): Promise<Member | null> {
     // const member = await this.membersRepository.findByEmailWithFullDetails(email);
-    const member = await this.membersRepository.findByEmailWithFullDetails(email);
+    const member = await this.membersRepository.findOneByEmailWithFullDetails(email);
     if (member) {
       console.log('Found member:', { 
         ...member, 
@@ -391,11 +434,41 @@ export class MembersService {
   }
 
   async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
-    return this.membersRepository.findByProviderAndProviderId(provider, providerId);
+    return this.membersRepository.findOneByProviderAndProviderId(provider, providerId);
   }
 
   async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
-    return this.membersRepository.findByHashedEmail(hashedEmail);
+    return this.membersRepository.findOneByHashedEmail(hashedEmail);
+  }
+
+  /**
+   * 비밀번호 재설정
+   */
+  async resetPassword(token: string, newPassword: string): Promise<PasswordResetTokenResponseDto> {
+    const member = await this.membersRepository.findOneByPasswordResetToken(token);
+    
+    if (!member) {
+      throw new BadRequestException('유효하지 않은 토큰입니다.');
+    }
+
+    if (member.passwordResetTokenExpiresAt < new Date()) {
+      throw new BadRequestException('만료된 토큰입니다. 비밀번호 재설정을 다시 요청해주세요.');
+    }
+
+    // 비밀번호 해시화 및 업데이트
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.membersRepository.updateMember(member.uuid, {
+      password: hashedPassword,
+      passwordResetToken: null,
+      passwordResetTokenExpiresAt: null,
+      passwordChangedAt: new Date(),
+      tokenVersion: member.tokenVersion + 1
+    });
+
+    return {
+      success: true,
+      message: '비밀번호가 성공적으로 재설정되었습니다.'
+    };
   }
 
 } 

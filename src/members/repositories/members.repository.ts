@@ -29,7 +29,7 @@ export class MembersRepository {
   }
 
   // 이메일로 멤버 조회 (로그인, 중복 확인 등에 사용)
-  async findByEmail(email: string): Promise<Member | null> {
+  async findOneByEmail(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({
       where: { hashedEmail: EmailUtil.encryptEmail(email) },
     });
@@ -138,7 +138,7 @@ export class MembersRepository {
   }
 
   // 이메일로 멤버 상세 정보 조회 (회원 정보 페이지 등에 사용)
-  async findByEmailWithFullDetails(email: string): Promise<Member | null> {
+  async findOneByEmailWithFullDetails(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({ 
       // where: { email },
       where: {hashedEmail: EmailUtil.encryptEmail(email)},
@@ -168,7 +168,9 @@ export class MembersRepository {
   // 비밀번호 재설정 토큰 생성
   async createPasswordResetToken(member: Member): Promise<Member> {
     member.passwordResetToken = uuidv4();
+    // 1시간 후 만료
     member.passwordResetTokenExpiresAt = new Date(Date.now() + 3600000);
+    // 토큰 버전 증가(기존 발급된 토큰 무효화 -> 실질적 로그아웃 -> 재로그인 필요)
     member.tokenVersion += 1;
     
     return this.memberRepository.save(member);
@@ -193,12 +195,12 @@ export class MembersRepository {
     );
   }
 
-  async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
+  async findOneByProviderAndProviderId(provider: AuthProvider, providerId: string) {
     return this.memberRepository.findOne({ where: { provider, providerId } });
   }
 
   // 이메일 해시값으로 조회 
-  async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
+  async findOneByHashedEmail(hashedEmail: string): Promise<Member | null> {
     return this.memberRepository.findOne({ where: { hashedEmail: hashedEmail }, select: ['id', 'uuid', 'email', 'status', 'loginAttempts', 'lockoutUntil', 'password'] });
   }
 
@@ -206,5 +208,11 @@ export class MembersRepository {
   async existsByNickname(nickname: string): Promise<boolean> {
     const count = await this.memberRepository.count({ where: { nickname } });
     return count > 0;
+  }
+
+  async findOneByPasswordResetToken(token: string): Promise<Member | null> {
+    return this.memberRepository.findOne({
+      where: { passwordResetToken: token }
+    });
   }
 } 

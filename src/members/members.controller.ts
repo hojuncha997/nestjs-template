@@ -23,7 +23,7 @@ import { EmailVerificationResponse } from './types/email-verification-response.t
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 // import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
-
+import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -144,12 +144,28 @@ export class MembersController {
   @ApiResponse({ 
     status: HttpStatus.OK, 
     description: '비밀번호 재설정 토큰 발급 성공', 
-    type: MemberResponseDto 
+    type: PasswordResetTokenResponseDto 
   })
   async createPasswordResetToken(
     @Body('email') email: string
-  ): Promise<MemberResponseDto> {
+  ): Promise<PasswordResetTokenResponseDto> {
     return this.membersService.createPasswordResetToken(email);
+  }
+
+  /**
+   * 비밀번호 재설정 토큰 검증
+   */
+  @Post('validate-password-reset-token')
+  @ApiOperation({ summary: '비밀번호 재설정 토큰 검증' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '토큰 검증 성공', 
+    type: PasswordResetTokenResponseDto 
+  })
+  async validatePasswordResetToken(
+    @Body('token') token: string
+  ): Promise<PasswordResetTokenResponseDto> {
+    return this.membersService.validatePasswordResetToken(token);
   }
 
   /**
@@ -181,6 +197,23 @@ export class MembersController {
     @Body() createSocialMemberDto: CreateSocialMemberDto
   ): Promise<MemberResponseDto> {
     return this.membersService.createSocialMember(createSocialMemberDto);
+  }
+
+  /**
+   * 비밀번호 재설정
+   */
+  @Post('reset-password')
+  @ApiOperation({ summary: '비밀번호 재설정' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '비밀번호 재설정 성공', 
+    type: PasswordResetTokenResponseDto 
+  })
+  async resetPassword(
+    @Body('token') token: string,
+    @Body('newPassword') newPassword: string
+  ): Promise<PasswordResetTokenResponseDto> {
+    return this.membersService.resetPassword(token, newPassword);
   }
 
 } 
