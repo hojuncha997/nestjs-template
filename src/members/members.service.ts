@@ -14,6 +14,7 @@ import { MembersRepository } from './repositories/members.repository';
 import { AuthProvider } from '@common/enums';
 import { SocialLoginDto } from '@auth/dto/social-login.dto';
 import { EmailUtil } from '@common/utils/email-encryption.util';
+import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
 
 @Injectable()
 export class MembersService {
@@ -30,6 +31,8 @@ export class MembersService {
       throw new BadRequestException('필수 약관 동의해주세요.');
     }
   }
+
+ 
 
   /**
    * 새로운 회원 생성
@@ -67,13 +70,22 @@ export class MembersService {
     // DTO -> Entity
     const memberEntity = MemberMapper.toEntity(createMemberDto);
 
+  // 랜덤 닉네임 생성 및 중복 체크
+    const nickname = await NicknameGenerationUtil.generateUniqueNickname(
+      // 생성된 닉네임을 리포지토리 함수에 전달하여 중복 체크
+      // 만약 중복되면 여러 번 시도하여 고유한 닉네임 생성
+      // 계속해서 문제가 생기면 에러 발생
+      async (nick) => await this.membersRepository.existsByNickname(nick)
+    );
+
     // 추가 필드 설정: Object.assig()을 사용하지 않고 개별 처리.(가독성, 디버깅 용이)
     memberEntity.email = EmailUtil.encryptEmail(createMemberDto.email); // 이메일 암호화(개인정보 보호(양방향))
     memberEntity.hashedEmail = hashedEmail; // 이메일 해시값(조회용)
     memberEntity.password = await bcrypt.hash(createMemberDto.password, 10); // 비밀번호 해시화(단방향)
     memberEntity.verificationToken = uuidv4(); // 인증 토큰 생성
     memberEntity.verificationTokenExpiresAt = verificationTokenExpiresAt; // 인증 토큰 만료 시간 설정
-    memberEntity.status = MemberStatus.PENDING; // 회원 상태 설정ㄴ
+    memberEntity.status = MemberStatus.PENDING; // 회원 상태 설정
+    memberEntity.nickname = nickname; // 닉네임 설정
     
     // 약관 동의 시간 기록
     memberEntity.termsAgreed = createMemberDto.termsAgreed;
@@ -156,7 +168,8 @@ export class MembersService {
     const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${member.verificationToken}`;
     
     await this.emailService.send({
-      to: member.email,
+      // to: member.email,
+      to: EmailUtil.decryptEmail(member.email),
       subject: '회원가입 인증을 완료해주세요',
       template: 'email-verification',
       context: {
@@ -298,6 +311,7 @@ export class MembersService {
    * 이메일로 회원 상세정보 조회(비밀번호 제외)
    */
   async findByEmail(email: string): Promise<Member | null> {
+    // const member = await this.membersRepository.findByEmailWithFullDetails(email);
     const member = await this.membersRepository.findByEmailWithFullDetails(email);
     if (member) {
       console.log('Found member:', { 
@@ -333,17 +347,28 @@ export class MembersService {
         theme: Theme.LIGHT
       }
     });
+
+    const now = new Date();
+
+    // 이메일 암호화 및 해시값 생성
+    memberEntity.email = EmailUtil.encryptEmail(socialLoginDto.email);
+    memberEntity.hashedEmail = EmailUtil.hashEmail(socialLoginDto.email);
+
+    // 닉네임 생성
+    memberEntity.nickname = await NicknameGenerationUtil.generateUniqueNickname(
+      async (nick) => await this.membersRepository.existsByNickname(nick)
+    );
     
     // 소셜 회원은 이메일 인증이 필요 없음
     memberEntity.emailVerified = true;
-    memberEntity.emailVerifiedAt = new Date();
+    memberEntity.emailVerifiedAt = now;
     memberEntity.status = MemberStatus.ACTIVE;
     
     // 필수 약관 동의 처리 (소셜 로그인의 경우 자동 동의로 처리)
     memberEntity.termsAgreed = true;
-    memberEntity.termsAgreedAt = new Date();
+    memberEntity.termsAgreedAt = now;
     memberEntity.privacyAgreed = true;
-    memberEntity.privacyAgreedAt = new Date();
+    memberEntity.privacyAgreedAt = now;
     
     // provider와 providerId 명시적 설정
     memberEntity.provider = socialLoginDto.provider;
@@ -367,6 +392,10 @@ export class MembersService {
 
   async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
     return this.membersRepository.findByProviderAndProviderId(provider, providerId);
+  }
+
+  async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
+    return this.membersRepository.findByHashedEmail(hashedEmail);
   }
 
 } 

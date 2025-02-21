@@ -10,6 +10,7 @@ import { Member } from '@members/entities/member.entity';
 // import { SocialLoginDto } from '@members/dto/social-login.dto';
 import { SocialLoginDto } from '@auth/dto';
 // import axios from 'axios';
+import { EmailUtil } from '@common/utils/email-encryption.util';
 
 export class RefreshTokenExpiredException extends UnauthorizedException {
   constructor() {
@@ -89,6 +90,7 @@ export class AuthService {
   // }
 
   private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
+    console.log('authService login 호출됨');
     const payload: JwtPayload = { 
       email: user.email, 
       sub: user.uuid,
@@ -183,10 +185,25 @@ export class AuthService {
   }
 
   async validateMember(email: string, password: string): Promise<AuthUser | null> {
-    const user = await this.authRepository.findByEmail(email);
-    console.log('DB에서 조회된 사용자 정보:', user);
+    console.log('validateMember 호출됨');
+    console.log('email:', email);
+    console.log('password:', password);
+    if (!email || !password) {
+      throw new BadRequestException('이메일과 비밀번호를 모두 입력해주세요.');
+    }
+
+    // 이메일 해시값으로 사용자 조회
+    const hashedEmail = EmailUtil.hashEmail(email);
+    const user = await this.membersService.findByHashedEmail(hashedEmail);
+    console.log('DB에서 조회된 사용자 정보:', {
+      ...user,
+      password: user?.password ? '[HIDDEN]' : undefined
+    });
     
-    if (!user) return null;
+    if (!user || !user.password) {
+
+      throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+    }
 
     // 계정 잠금 확인
     if (user.lockoutUntil && user.lockoutUntil > new Date()) {
@@ -195,23 +212,28 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log('비밀번호 불일치');
       await this.membersService.incrementLoginAttempts(email);
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+    } else {
+      console.log('비밀번호 일치: ', isPasswordValid);
     }
 
-    await this.membersService.resetLoginAttempts(email);
+    // 이메일 복호화하여 원본 이메일 획득
+    const decryptedEmail = EmailUtil.decryptEmail(user.email);
+    await this.membersService.resetLoginAttempts(decryptedEmail);
     
     const authUser = {
       id: user.id,
       uuid: user.uuid,
-      email: user.email,
+      email: decryptedEmail, // 복호화된 이메일 사용
       role: user.role || 'USER',
       preferences: user.preferences || {
         language: 'ko',
         timezone: 'Asia/Seoul',
         theme: 'light'
       },
-      status: user.status ,
+      status: user.status,
       tokenVersion: user.tokenVersion || 0,
     };
     

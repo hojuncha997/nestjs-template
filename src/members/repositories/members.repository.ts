@@ -8,6 +8,7 @@ import { Repository , DataSource} from 'typeorm';
 import { Member } from '../entities/member.entity';
 import { MemberStatus , AuthProvider} from '@common/enums';
 import { v4 as uuidv4 } from 'uuid';
+import { EmailUtil } from '@common/utils/email-encryption.util';
 
 @Injectable()
 export class MembersRepository {
@@ -30,7 +31,7 @@ export class MembersRepository {
   // 이메일로 멤버 조회 (로그인, 중복 확인 등에 사용)
   async findByEmail(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({
-      where: { email },
+      where: { hashedEmail: EmailUtil.encryptEmail(email) },
     });
   }
 
@@ -139,7 +140,8 @@ export class MembersRepository {
   // 이메일로 멤버 상세 정보 조회 (회원 정보 페이지 등에 사용)
   async findByEmailWithFullDetails(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({ 
-      where: { email },
+      // where: { email },
+      where: {hashedEmail: EmailUtil.encryptEmail(email)},
       select: {
         id: true,
         uuid: true,
@@ -174,7 +176,8 @@ export class MembersRepository {
 
   // 이메일 중복 검사
   async checkExistingEmail(email: string): Promise<Member | null> {
-    return this.memberRepository.findOne({ where: { email } });
+    // return this.memberRepository.findOne({ where: { email } });
+    return this.memberRepository.findOne({ where: { hashedEmail: EmailUtil.encryptEmail(email) } });
   }
 
   // 멤버 업데이트
@@ -196,6 +199,12 @@ export class MembersRepository {
 
   // 이메일 해시값으로 조회 
   async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
-    return this.memberRepository.findOne({ where: { hashedEmail: hashedEmail } });
+    return this.memberRepository.findOne({ where: { hashedEmail: hashedEmail }, select: ['id', 'uuid', 'email', 'status', 'loginAttempts', 'lockoutUntil', 'password'] });
+  }
+
+  // 닉네임 중복 검사
+  async existsByNickname(nickname: string): Promise<boolean> {
+    const count = await this.memberRepository.count({ where: { nickname } });
+    return count > 0;
   }
 } 
