@@ -77,6 +77,15 @@ export class PostsController {
         @Param('public_id') public_id: string,
         @Body() post: UpdatePostDto
     ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!decodedPublicId?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+        console.log('---------!!!--포스팅 수정');
+        console.log('---------!!!--public_id:', public_id);
+        console.log('---------!!!--member:', member.email);
+
         return await this.postsService.updatePost(public_id, post, member);
     }
 

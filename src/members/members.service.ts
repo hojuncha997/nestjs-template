@@ -13,6 +13,7 @@ import { EmailService } from '@common/services/email.service';
 import { MembersRepository } from './repositories/members.repository';
 import { AuthProvider } from '@common/enums';
 import { SocialLoginDto } from '@auth/dto/social-login.dto';
+import { EmailUtil } from '@common/utils/email-encryption.util';
 
 @Injectable()
 export class MembersService {
@@ -23,42 +24,66 @@ export class MembersService {
     private readonly emailService: EmailService,
   ) {}
 
+  // 회원가입 시 약관 동의 검증
+  private validateCreateMemberDto(dto: CreateMemberDto) {
+    if (!dto.termsAgreed || !dto.privacyAgreed) {
+      throw new BadRequestException('필수 약관 동의해주세요.');
+    }
+  }
+
   /**
    * 새로운 회원 생성
    */
   async create(createMemberDto: CreateMemberDto): Promise<MemberResponseDto> {
     // 약관 동의 검증
-    if (!createMemberDto.termsAgreed || !createMemberDto.privacyAgreed) {
-      throw new BadRequestException('필수 약관 동의해주세요.');
-    }
+    // if (!createMemberDto.termsAgreed || !createMemberDto.privacyAgreed) {
+    //   throw new BadRequestException('필수 약관 동의해주세요.');
+    // }
+    this.validateCreateMemberDto(createMemberDto);
 
     // 연령 확인 필수인 경우
     // if (!createMemberDto.ageVerified) {
     //   throw new BadRequestException('연령 확인이 필요합니다.');
     // }
 
-    const existingMember = await this.membersRepository.checkExistingEmail(createMemberDto.email);
+    // 이메일 해싱(암호화 X)
+    const hashedEmail = EmailUtil.hashEmail(createMemberDto.email);
+
+    // 이메일 해시값으로 중복 체크
+    const existingMember = await this.membersRepository.findByHashedEmail(hashedEmail);
     if (existingMember) {
       throw new ConflictException('이미 존재하는 이메일입니다.');
     }
+
+    // const existingMember = await this.membersRepository.checkExistingEmail(createMemberDto.email);
+    // if (existingMember) {
+    //   throw new ConflictException('이미 존재하는 이메일입니다.');
+    // }
+
+    // 시간 관련 처리
+    const now = new Date();
+    const verificationTokenExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
     // DTO -> Entity
     const memberEntity = MemberMapper.toEntity(createMemberDto);
-    
-    // 추가 필드 설정
-    memberEntity.password = await bcrypt.hash(createMemberDto.password, 10);
-    memberEntity.verificationToken = uuidv4();
-    memberEntity.verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    memberEntity.status = MemberStatus.PENDING;
+
+    // 추가 필드 설정: Object.assig()을 사용하지 않고 개별 처리.(가독성, 디버깅 용이)
+    memberEntity.email = EmailUtil.encryptEmail(createMemberDto.email); // 이메일 암호화(개인정보 보호(양방향))
+    memberEntity.hashedEmail = hashedEmail; // 이메일 해시값(조회용)
+    memberEntity.password = await bcrypt.hash(createMemberDto.password, 10); // 비밀번호 해시화(단방향)
+    memberEntity.verificationToken = uuidv4(); // 인증 토큰 생성
+    memberEntity.verificationTokenExpiresAt = verificationTokenExpiresAt; // 인증 토큰 만료 시간 설정
+    memberEntity.status = MemberStatus.PENDING; // 회원 상태 설정ㄴ
     
     // 약관 동의 시간 기록
     memberEntity.termsAgreed = createMemberDto.termsAgreed;
-    memberEntity.termsAgreedAt = new Date();
+    memberEntity.termsAgreedAt = now;
     memberEntity.privacyAgreed = createMemberDto.privacyAgreed;
-    memberEntity.privacyAgreedAt = new Date();
+    memberEntity.privacyAgreedAt = now;
     
     if (createMemberDto.marketingAgreed) {
       memberEntity.marketingAgreed = true;
-      memberEntity.marketingAgreedAt = new Date();
+      memberEntity.marketingAgreedAt = now;
     }
 
     // // 연령 확인 기록

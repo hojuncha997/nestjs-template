@@ -14,7 +14,8 @@ import {
    CreateDateColumn,
    UpdateDateColumn,
    DeleteDateColumn,
-   OneToMany
+   OneToMany,
+   Index
 } from 'typeorm';
 
 import { 
@@ -29,13 +30,16 @@ import {
 import { RefreshToken } from '@auth/entities/refresh-token.entity';
 
 @Entity('members')
+
+// 소셜 로그인 관련 복합 인덱스
+@Index('idx_member_provider_provider_id', ['provider', 'providerId'])
 export class Member {
    @PrimaryGeneratedColumn()
    id: number;  // 내부 사용 기본키
 
+   // 외부 노출용 식별자
    @Column('uuid', { 
-    //    name: 'uuid',
-       unique: true 
+       unique: true // 유니크 설정이 돼 있어서 자동으로 인덱스 생성됨
    })
    uuid: string = uuidv4();  // 외부 노출용 식별자
 
@@ -44,10 +48,20 @@ export class Member {
     */
    @Column({ 
     //    name: 'email',
-       unique: true 
+       unique: true // 유니크 설정이 돼 있어서 자동으로 인덱스 생성됨
    })
    email: string;
 
+     // 해시된 이메일 인덱스 (로그인, 검색에 주로 사용)
+    @Index('idx_member_hashed_email')
+   @Column({
+       name: 'hashed_email',
+       nullable: true,
+       select: false,
+   })
+   hashedEmail?: string;
+
+    //    name: 'email_verified',
    @Column({ 
     //    name: 'password',
        nullable: true,
@@ -334,6 +348,8 @@ export class Member {
    /**
     * 회원 상태 관리
     */
+    // 상태 + 생성일자 복합 인덱스 (회원 통계, 필터링에 유용)
+   @Index('idx_member_status_created_at', ['status', 'createdAt'])
    @Column({
     //    name: 'member_status',
        type: 'enum',

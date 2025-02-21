@@ -193,4 +193,9 @@ export class MembersRepository {
   async findByProviderAndProviderId(provider: AuthProvider, providerId: string) {
     return this.memberRepository.findOne({ where: { provider, providerId } });
   }
+
+  // 이메일 해시값으로 조회 
+  async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
+    return this.memberRepository.findOne({ where: { hashedEmail: hashedEmail } });
+  }
 } 
