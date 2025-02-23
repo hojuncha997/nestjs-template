@@ -215,4 +215,28 @@ export class MembersRepository {
       where: { passwordResetToken: token }
     });
   }
+
+  async findByHashedEmail(hashedEmail: string) {
+    const member = await this.memberRepository.findOne({
+        where: { hashedEmail: hashedEmail },
+        select: {
+            id: true,
+            uuid: true,
+            email: true,
+            password: true,
+            nickname: true,
+            status: true,
+            role: true,
+            preferences: {
+                language: true,
+                timezone: true,
+                theme: true
+            },
+            tokenVersion: true,
+            loginAttempts: true,
+            lockoutUntil: true
+        }
+    });
+    return member;
+  }
 } 

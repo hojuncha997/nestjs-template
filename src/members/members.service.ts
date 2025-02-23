@@ -457,8 +457,11 @@ export class MembersService {
     return this.membersRepository.findOneByProviderAndProviderId(provider, providerId);
   }
 
-  async findByHashedEmail(hashedEmail: string): Promise<Member | null> {
-    return this.membersRepository.findOneByHashedEmail(hashedEmail);
+  async findByHashedEmail(hashedEmail: string) {
+    console.log('findByHashedEmail 호출됨. hashedEmail:', hashedEmail);
+    const member = await this.membersRepository.findByHashedEmail(hashedEmail);
+    console.log('DB 조회 결과:', member);
+    return member;
   }
 
   /**

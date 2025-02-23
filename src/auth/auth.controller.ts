@@ -35,8 +35,8 @@ import { OptionalJwtAuthGuard } from '@auth/guards/optional-jwt-auth.guard';
 export class AuthController {
  constructor(private authService: AuthService, private membersService: MembersService) {}
 
- @Post('/local/login')
- @UseGuards(LocalAuthGuard)
+ @Post('/local/login')  // 로컬 로그인 요청
+ @UseGuards(LocalAuthGuard) // 로컬 인증 전략 사용
  @ApiOperation({ summary: '로컬 로그인' })
  @ApiResponse({ 
    status: 200, 

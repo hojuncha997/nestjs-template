@@ -28,6 +28,7 @@ interface AuthUser {
   id: number;
   uuid: string;
   email: string;
+  nickname: string;
   role: string;
   tokenVersion: number;
   preferences: {
@@ -40,6 +41,7 @@ interface AuthUser {
 
 interface JwtPayload {
   email: string;
+  nickname: string;
   sub: string;    // uuid
   role: string;
   preferences: {
@@ -60,10 +62,13 @@ export class AuthService {
   ) {}
 
   async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
+
+    // console.log('member from localLogin:', member);
     const user: AuthUser = {
       id: member.id,
       uuid: member.uuid,
       email: member.email,
+      nickname: member.nickname,
       role: member.role || 'USER',
       preferences: member.preferences || {
         language: 'ko',
@@ -91,8 +96,13 @@ export class AuthService {
 
   private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
     console.log('authService login 호출됨');
+
+    console.log('user.email from auth.service.login:',user.email);
+    
     const payload: JwtPayload = { 
-      email: user.email, 
+      // email: EmailUtil.decryptEmail(user.email),
+      email: user.email,
+      nickname: user.nickname,
       sub: user.uuid,
       role: user.role,
       preferences: user.preferences,
@@ -105,6 +115,11 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
     });
+    
+    // 생성된 토큰 디코드해서 확인
+    const decodedToken = await this.jwtService.decode(accessToken);
+    console.log('생성된 토큰의 decoded 내용:', decodedToken);
+    
     const refreshToken = await this.jwtService.signAsync(payload, {
       
       // expiresIn: '7d',\
@@ -152,7 +167,8 @@ export class AuthService {
     const user: AuthUser = {
       id: tokenData.member.id,
       uuid: tokenData.member.uuid,
-      email: tokenData.member.email,
+      email: EmailUtil.decryptEmail(tokenData.member.email),
+      nickname: tokenData.member.nickname,
       role: tokenData.member.role,
       preferences: tokenData.member.preferences,
       status: tokenData.member.status,
@@ -194,15 +210,13 @@ export class AuthService {
 
     // 이메일 해시값으로 사용자 조회
     const hashedEmail = EmailUtil.hashEmail(email);
+    console.log('해시된 이메일:', hashedEmail); // 디버깅 추가
+    
     const user = await this.membersService.findByHashedEmail(hashedEmail);
-    console.log('DB에서 조회된 사용자 정보:', {
-      ...user,
-      password: user?.password ? '[HIDDEN]' : undefined
-    });
+    console.log('DB 조회 결과 raw:', user); // 디버깅 추가
     
     if (!user || !user.password) {
-
-      throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+        throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
 
     // 계정 잠금 확인
@@ -227,6 +241,7 @@ export class AuthService {
       id: user.id,
       uuid: user.uuid,
       email: decryptedEmail, // 복호화된 이메일 사용
+      nickname: user.nickname,
       role: user.role || 'USER',
       preferences: user.preferences || {
         language: 'ko',
@@ -303,6 +318,7 @@ export class AuthService {
         id: socialMember.id,
         uuid: socialMember.uuid,
         email: socialMember.email,
+        nickname: socialMember.nickname,
         role: socialMember.role,
         preferences: socialMember.preferences,
         status: socialMember.status,
@@ -388,5 +404,18 @@ export class AuthService {
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
+  }
+
+  async validateUser(email: string, password: string): Promise<any> {
+    // 여기서 실제 회원 조회 및 비밀번호 검증
+    const member = await this.membersService.findByEmail(email);
+    if (member && await this.validatePassword(password, member.password)) {
+        return member;
+    }
+    return null;
+  }
+
+  private async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 } 
