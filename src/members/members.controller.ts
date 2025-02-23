@@ -24,6 +24,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 // import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -210,10 +211,12 @@ export class MembersController {
     type: PasswordResetTokenResponseDto 
   })
   async resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string
+    @Body() resetPasswordDto: ResetPasswordDto
   ): Promise<PasswordResetTokenResponseDto> {
-    return this.membersService.resetPassword(token, newPassword);
+    return this.membersService.resetPassword(
+      resetPasswordDto.token, 
+      resetPasswordDto.newPassword
+    );
   }
 
 } 

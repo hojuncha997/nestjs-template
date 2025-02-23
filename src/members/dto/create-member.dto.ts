@@ -3,8 +3,9 @@
 // 필수 정보만을 포함하여 회원가입의 진입 장벽을 낮춤
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength, IsBoolean, IsEnum } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsBoolean, IsEnum, Matches, MaxLength } from 'class-validator';
 import { AuthProvider } from '@common/enums';
+import { PASSWORD_POLICY, PASSWORD_VALIDATION_MESSAGE } from '@common/constants/password-policy.constant';
 
 export class CreateMemberDto {
   @ApiProperty({
@@ -21,7 +22,12 @@ export class CreateMemberDto {
     required: true,
   })
   @IsString()
-  @MinLength(8)
+  @MinLength(PASSWORD_POLICY.MIN_LENGTH, { message: PASSWORD_VALIDATION_MESSAGE.MIN_LENGTH })
+  @MaxLength(PASSWORD_POLICY.MAX_LENGTH, { message: PASSWORD_VALIDATION_MESSAGE.MAX_LENGTH })
+  @Matches(PASSWORD_POLICY.PATTERNS.UPPERCASE, { message: PASSWORD_VALIDATION_MESSAGE.REQUIRE_UPPERCASE })
+  @Matches(PASSWORD_POLICY.PATTERNS.LOWERCASE, { message: PASSWORD_VALIDATION_MESSAGE.REQUIRE_LOWERCASE })
+  @Matches(PASSWORD_POLICY.PATTERNS.NUMBER, { message: PASSWORD_VALIDATION_MESSAGE.REQUIRE_NUMBER })
+  @Matches(PASSWORD_POLICY.PATTERNS.SPECIAL_CHAR, { message: PASSWORD_VALIDATION_MESSAGE.REQUIRE_SPECIAL_CHAR })
   password: string;
 
   @ApiProperty({

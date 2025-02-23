@@ -31,7 +31,7 @@ export class MembersRepository {
   // 이메일로 멤버 조회 (로그인, 중복 확인 등에 사용)
   async findOneByEmail(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({
-      where: { hashedEmail: EmailUtil.encryptEmail(email) },
+      where: { hashedEmail: EmailUtil.hashEmail(email) },
     });
   }
 
