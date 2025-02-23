@@ -27,6 +27,7 @@ import { LocalLoginDto, SocialLoginDto } from './dto';
 import { ApiTags, ApiHeader, ApiOperation, ApiResponse, ApiCookieAuth, ApiBearerAuth } from '@nestjs/swagger';
 import { ClientType, AuthProvider,} from '@common/enums';
 import { MembersService } from '@members/members.service';
+import { OptionalJwtAuthGuard } from '@auth/guards/optional-jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -201,7 +202,8 @@ async refresh(
 }
 
  @Post('logout')
- @UseGuards(JwtAuthGuard)
+//  @UseGuards(JwtAuthGuard)
+ @UseGuards(OptionalJwtAuthGuard)
  @ApiOperation({ summary: '로그아웃' })
  @ApiResponse({ status: 200, description: '로그아웃 성공' })
  @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
@@ -211,14 +213,19 @@ async refresh(
    @Req() req,
    @Cookies('refresh_token') cookieToken: string,
    @Body('refresh_token') bodyToken: string,
+   @Res({ passthrough: true }) res: Response,
  ) {
-   const refreshToken = cookieToken || bodyToken;
-   if (!refreshToken) {
-     throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
-   }
+   // 쿠키는 무조건 삭제
+   res.clearCookie('refresh_token', {
+       httpOnly: true,
+       secure: process.env.NODE_ENV === 'production',
+       sameSite: 'lax'
+   });
 
-   await this.authService.logout(refreshToken, req.user.uuid);
-   return { message: '로그아웃되었습니다.' };
+   // 토큰이 있든 없든 성공 응답
+   const logoutResponse = { message: '로그아웃되었습니다.' };
+   console.log('logoutResponse:', logoutResponse);
+   return logoutResponse;
  }
 
  @Post('logout/all')
