@@ -1,12 +1,14 @@
 // src/common/services/email.service.ts
 // 이메일 서비스
+import { EmailUtil } from '@common/utils/email-encryption.util';
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';  // 이메일 전송을 위한 패키지. pnpm add nodemailer @types/nodemailer
 
 interface EmailOptions {
   to: string;
   subject: string;
-  template: string;
+  html?: string;
+  template?: string;
   context: Record<string, any>;
 }
 
@@ -46,23 +48,20 @@ export class EmailService {
 
 
   async send(options: EmailOptions): Promise<void> {
-    const html = `
-      <h1>이메일 인증</h1>
-      <p>안녕하세요 ${options.context.name}님,</p>
-      <p>아래 링크를 클릭하여 이메일 인증을 완료해주세요:</p>
-      <a href="${options.context.verificationLink}" target="_blank" rel="noopener noreferrer">이메일 인증하기</a>
-      <p>이 링크는 ${options.context.expiresIn} 동안 유효합니다.</p>
-    `;
-
     // 디버깅을 위한 로그
-    console.log('Verification Link:', options.context.verificationLink);
+    if (options.context.verificationLink) {
+      console.log('Verification Link:', options.context.verificationLink);
+    }
+    if (options.context.resetLink) {
+      console.log('Reset Link:', options.context.resetLink);
+    }
 
     // 이메일 발송
     const info = await this.transporter.sendMail({
       from: '"personal-cms" <noreply@myapp.com>',
       to: options.to,
       subject: options.subject,
-      html: html,
+      html: options.html,  // 전달받은 html 사용
     });
 
     // 개발 환경에서 이메일 확인용 URL 출력

@@ -172,17 +172,22 @@ export class MembersService {
   async sendVerificationEmail(member: Member): Promise<void> {
     const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${member.verificationToken}`;
     
+    const html = `
+      <h1>이메일 인증</h1>
+      <p>안녕하세요 ${member.name || member.email}님,</p>
+      <p>아래 링크를 클릭하여 이메일 인증을 완료해주세요:</p>
+      <a href="${verificationLink}" target="_blank" rel="noopener noreferrer">이메일 인증하기</a>
+      <p>이 링크는 24시간 동안 유효합니다.</p>
+    `;
+
     await this.emailService.send({
-      // to: member.email,
       to: EmailUtil.decryptEmail(member.email),
       subject: '회원가입 인증을 완료해주세요',
-      template: 'email-verification',
+      html,
       context: {
         name: member.name || member.email,
         verificationLink,
-        expiresIn: '24시간',
-        termsAgreedAt: member.termsAgreedAt,
-        marketingAgreed: member.marketingAgreed
+        expiresIn: '24시간'
       }
     });
   }
@@ -259,14 +264,29 @@ export class MembersService {
       throw new BadRequestException('이미 유효한 비밀번호 재설정 토큰이 존재합니다.');
     }
 
+    console.log('member from createPasswordResetToken: ', member);
+
+    // 비밀번호 재설정 토큰(uuid, passwordResetToken), 만료 시간(passwordResetTokenExpiresAt) 생성하여 멤버 테이블 칼럼에 저장
     const updatedMember = await this.membersRepository.createPasswordResetToken(member);
-    
+
+    // 이메일 복호화
+    const decryptedEmail = EmailUtil.decryptEmail(updatedMember.email);
+
     // 비밀번호 재설정 이메일 발송
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${updatedMember.passwordResetToken}`;
+    
+    const html = `
+      <h1>비밀번호 재설정</h1>
+      <p>안녕하세요 ${decryptedEmail}님,</p>
+      <p>아래 링크를 클릭하여 비밀번호를 재설정해주세요:</p>
+      <a href="${resetLink}" target="_blank" rel="noopener noreferrer">비밀번호 재설정하기</a>
+      <p>이 링크는 30분 동안 유효합니다.</p>
+    `;
+
     await this.emailService.send({
-      to: EmailUtil.decryptEmail(updatedMember.email),
+      to: decryptedEmail,
       subject: '비밀번호 재설정 안내',
-      template: 'password-reset',
+      html,
       context: {
         name: updatedMember.name || updatedMember.email,
         resetLink,
