@@ -63,7 +63,7 @@ export class AuthService {
 
   async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
 
-    // console.log('member from localLogin:', member);
+    console.log('member from localLogin:', member);
     const user: AuthUser = {
       id: member.id,
       uuid: member.uuid,
@@ -78,6 +78,8 @@ export class AuthService {
       status: member.status,
       tokenVersion: member.tokenVersion || 0,
     };
+
+    console.log('user from localLogin:', user);
 
     const tokens = await this.login(user, clientType, keepLoggedIn);
     
@@ -98,6 +100,7 @@ export class AuthService {
     console.log('authService login 호출됨');
 
     console.log('user.email from auth.service.login:',user.email);
+    console.log('user.nickname from auth.service.login:',user.nickname);
     
     const payload: JwtPayload = { 
       // email: EmailUtil.decryptEmail(user.email),
@@ -409,6 +412,7 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     // 여기서 실제 회원 조회 및 비밀번호 검증
     const member = await this.membersService.findByEmail(email);
+    console.log('member from validateUser:', member);
     if (member && await this.validatePassword(password, member.password)) {
         return member;
     }
@@ -416,6 +420,8 @@ export class AuthService {
   }
 
   private async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+    const result = await bcrypt.compare(password, hashedPassword);
+    console.log('result from validatePassword:', result);
+    return result;
   }
 } 

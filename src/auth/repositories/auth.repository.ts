@@ -41,6 +41,7 @@ export class AuthRepository {
        'member.id',
        'member.uuid',
        'member.email',
+       'member.nickname',
        'member.role',
        'member.preferences'
      ])

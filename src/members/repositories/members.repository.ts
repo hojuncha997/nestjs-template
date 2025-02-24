@@ -141,12 +141,14 @@ export class MembersRepository {
   async findOneByEmailWithFullDetails(email: string): Promise<Member | null> {
     return this.memberRepository.findOne({ 
       // where: { email },
-      where: {hashedEmail: EmailUtil.encryptEmail(email)},
+      // where: {hashedEmail: EmailUtil.encryptEmail(email)},
+      where: {hashedEmail: EmailUtil.hashEmail(email)},
       select: {
         id: true,
         uuid: true,
         email: true,
-        // password: true,
+        nickname: true,
+        password: true,
         status: true,
         emailVerified: true,
         loginAttempts: true,

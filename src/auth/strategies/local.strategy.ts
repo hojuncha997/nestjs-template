@@ -9,19 +9,20 @@ import { MemberStatus } from '@common/enums'
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
-    super({ usernameField: 'email' });
+    super({
+      usernameField: 'email',
+      passwordField: 'password'
+    });
   }
 
   async validate(email: string, password: string): Promise<any> {
-    const member = await this.authService.validateMember(email, password);
-    if (!member) {
+    console.log('LocalStrategy validate - email:', email);
+    console.log('LocalStrategy validate - password:', password);
+    
+    const user = await this.authService.validateUser(email, password);
+    if (!user) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
-
-    if(member.status === MemberStatus.PENDING) {
-      throw new UnauthorizedException('이메일 승인을 완료해주세요.');
-    }
-
-    return member;
+    return user;
   }
 } 
