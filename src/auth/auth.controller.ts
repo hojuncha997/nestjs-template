@@ -59,6 +59,7 @@ export class AuthController {
    @Body() loginDto: LocalLoginDto,
  ) {
   console.log('loginDto!!!!!!!s:', loginDto);
+  console.log('req.user!!!!!!!s:', req.user);
    return this.authService.localLogin(req.user, response, loginDto.clientType, loginDto.keepLoggedIn);
  }
 

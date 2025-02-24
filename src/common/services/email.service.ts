@@ -1,6 +1,6 @@
 // src/common/services/email.service.ts
 // 이메일 서비스
-import { EmailUtil } from '@common/utils/email-encryption.util';
+import { EmailUtil } from '@common/utils/email-util.util';
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';  // 이메일 전송을 위한 패키지. pnpm add nodemailer @types/nodemailer
 

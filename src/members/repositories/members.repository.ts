@@ -8,7 +8,7 @@ import { Repository , DataSource} from 'typeorm';
 import { Member } from '../entities/member.entity';
 import { MemberStatus , AuthProvider} from '@common/enums';
 import { v4 as uuidv4 } from 'uuid';
-import { EmailUtil } from '@common/utils/email-encryption.util';
+import { EmailUtil } from '@common/utils/email-util.util';
 
 @Injectable()
 export class MembersRepository {

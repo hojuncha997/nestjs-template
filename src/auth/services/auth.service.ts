@@ -10,7 +10,7 @@ import { Member } from '@members/entities/member.entity';
 // import { SocialLoginDto } from '@members/dto/social-login.dto';
 import { SocialLoginDto } from '@auth/dto';
 // import axios from 'axios';
-import { EmailUtil } from '@common/utils/email-encryption.util';
+import { EmailUtil } from '@common/utils/email-util.util';
 
 export class RefreshTokenExpiredException extends UnauthorizedException {
   constructor() {
@@ -410,11 +410,16 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    // 여기서 실제 회원 조회 및 비밀번호 검증
     const member = await this.membersService.findByEmail(email);
     console.log('member from validateUser:', member);
+    
     if (member && await this.validatePassword(password, member.password)) {
-        return member;
+      // 이메일 복호화 후 member 객체 반환
+      const decryptedEmail = EmailUtil.decryptEmail(member.email);
+      return {
+        ...member,
+        email: decryptedEmail
+      };
     }
     return null;
   }

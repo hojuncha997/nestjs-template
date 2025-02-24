@@ -13,7 +13,7 @@ import { EmailService } from '@common/services/email.service';
 import { MembersRepository } from './repositories/members.repository';
 import { AuthProvider } from '@common/enums';
 import { SocialLoginDto } from '@auth/dto/social-login.dto';
-import { EmailUtil } from '@common/utils/email-encryption.util';
+import { EmailUtil } from '@common/utils/email-util.util';
 import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
 import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
 
@@ -375,7 +375,7 @@ export class MembersService {
    */
   async findByEmail(email: string): Promise<Member | null> {
     // const member = await this.membersRepository.findByEmailWithFullDetails(email);
-    const member = await this.membersRepository.findOneByEmailWithFullDetails(email);
+    const member = await this.membersRepository.findOneByEmailWithFullDetails(email); // 이메일은 암호화 돼 있음.
     if (member) {
       console.log('Found member:', { 
         ...member, 
