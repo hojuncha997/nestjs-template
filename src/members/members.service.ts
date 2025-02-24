@@ -16,7 +16,8 @@ import { SocialLoginDto } from '@auth/dto/social-login.dto';
 import { EmailUtil } from '@common/utils/email-util.util';
 import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
 import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
-
+import { WithdrawnMember } from './entities/withdrawn-member.entity';
+import { WithdrawRequestDto } from './dto/withdraw-request.dto';
 @Injectable()
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
@@ -323,12 +324,36 @@ export class MembersService {
   /**
    * 회원 소프트 삭제
    */
-  async withdrawMember(uuid: string): Promise<void> {
-    const success = await this.membersRepository.withdrawMember(uuid);
-    if (!success) {
-      throw new NotFoundException('회원을 찾을 수 없습니다.');
-    }
-    // 추가 비즈니스 로직 (이메일 발송 등)
+  async withdrawMember(member: Member, withdrawRequestDto: WithdrawRequestDto): Promise<void> {
+    const withdrawnMember = new WithdrawnMember();
+    withdrawnMember.member = member;  // 관계 설정 추가. 테이블에는 member.id 값이 저장됨
+    withdrawnMember.memberUuid = member.uuid;
+    withdrawnMember.email = member.email;
+    withdrawnMember.hashedEmail = member.hashedEmail;
+    withdrawnMember.provider = member.provider;
+    withdrawnMember.providerId = member.providerId;
+    withdrawnMember.withdrawnAt = new Date();
+    withdrawnMember.withdrawalReason = {
+      reason: withdrawRequestDto.reason,
+      detail: withdrawRequestDto.detail
+    };
+    withdrawnMember.accountInfo = {
+      registeredAt: member.createdAt,
+      lastLoginAt: member.lastLoginAt,
+      emailVerified: member.emailVerified,
+      marketingAgreed: member.marketingAgreed,
+      levelInfo: member.levelInfo,
+      points: member.points
+    };
+
+    console.log('Member to withdraw:', {
+      uuid: member.uuid,
+      email: member.email,
+      hashedEmail: member.hashedEmail
+    });
+    console.log('WithdrawnMember entity:', withdrawnMember);
+
+    await this.membersRepository.withdrawMember(member, withdrawnMember);
   }
 
   /**
@@ -492,6 +517,15 @@ export class MembersService {
       success: true,
       message: '비밀번호가 성공적으로 재설정되었습니다.'
     };
+  }
+
+  // Entity가 필요한 내부 작업용 메서드
+  async findOneByUuidAsEntity(uuid: string): Promise<Member> {
+    const member = await this.membersRepository.findOneWithFullDetails(uuid);
+    if (!member) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+    return member;  // Entity 그대로 반환
   }
 
 } 

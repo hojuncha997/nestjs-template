@@ -2,3 +2,6 @@ export * from './create-member.dto';
 export * from './update-member.dto';
 export * from './member-response.dto';
 export * from './create-social-member.dto';
+export * from './withdraw-request.dto';
+export * from './reset-password.dto';
+export * from './password-reset-token-response.dto';

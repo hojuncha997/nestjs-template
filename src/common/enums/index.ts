@@ -15,3 +15,4 @@ export * from './member-status.enum';
 export * from './client-type.enum';
 export * from './email-token-validation-error.enum';
 export * from './curation-type.enum';
+export * from './withdrawal-reason.enum';

@@ -15,16 +15,16 @@ import {
   HttpCode,
   ParseUUIDPipe,
   UseGuards,
-  Request
+  Request,
+  ForbiddenException,
+  BadRequestException
 } from '@nestjs/common';
 import { MembersService } from './members.service';
-import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto } from './dto';
-import { EmailVerificationResponse } from './types/email-verification-response.type';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
-import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { MemberStatus } from '@common/enums';
+import { EmailVerificationResponse } from './types/email-verification-response.type';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto } from './dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -111,16 +111,26 @@ export class MembersController {
   /**
    * 회원 삭제 (소프트 삭제)
    */
-  @Delete(':uuid')
+  @Delete('withdraw')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '회원 탈퇴' })
   @ApiResponse({ 
     status: HttpStatus.NO_CONTENT, 
     description: '회원 탈퇴 성공' 
   })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('uuid', ParseUUIDPipe) uuid: string): Promise<void> {
-    await this.membersService.withdrawMember(uuid);
+  async withdraw(@Request() req, @Body() withdrawRequestDto: WithdrawRequestDto): Promise<void> {
+    // Entity로 조회
+    const member = await this.membersService.findOneByUuidAsEntity(req.member.uuid);
+    
+    // 이미 탈퇴한 회원인지 체크
+    if (member.status === MemberStatus.WITHDRAWAL) {
+      throw new BadRequestException('이미 탈퇴한 회원입니다.');
+    }
+
+    await this.membersService.withdrawMember(member, withdrawRequestDto);
   }
+
 
   /**
    * 이메일 인증

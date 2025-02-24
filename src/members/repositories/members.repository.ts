@@ -2,16 +2,20 @@
 // 멤버 리포지토리: 데이터베이스 접근을 담당하는 클래스
 // TypeORM의 Repository를 래핑하여 도메인에 특화된 데이터 접근 메서드 제공
 
-import { Injectable } from '@nestjs/common';
+import { Injectable , Logger, InternalServerErrorException} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository , DataSource} from 'typeorm';
 import { Member } from '../entities/member.entity';
 import { MemberStatus , AuthProvider} from '@common/enums';
 import { v4 as uuidv4 } from 'uuid';
 import { EmailUtil } from '@common/utils/email-util.util';
-
+import { WithdrawnMember } from '../entities/withdrawn-member.entity';
 @Injectable()
 export class MembersRepository {
+  
+  // members.mudule.ts에 로거를 등록하지 않고 직접 생성하면 각 클래스가 자신만의 Logger 인스턴스를 가지게 되어 로깅할 때 어떤 클래스에서 발생한 로그인지 쉽게 구분할 수 있음
+  private readonly logger = new Logger(MembersRepository.name);
+
   constructor(
     @InjectRepository(Member)
     private readonly memberRepository: Repository<Member>,
@@ -52,19 +56,40 @@ export class MembersRepository {
   }
 
   // 멤버 삭제 (Soft Delete)
-  async withdrawMember(uuid: string): Promise<boolean> {
-    const result = await this.dataSource.transaction(async (manager) => {
-      const member = await manager.findOne(Member, { where: { uuid } });
-      if (!member) return false;
+  async withdrawMember(member: Member, withdrawnMember: WithdrawnMember): Promise<boolean> {
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        // 탈퇴 정보 저장
+        await manager.save(WithdrawnMember, withdrawnMember);
 
-      await manager.update(Member, { uuid }, {
-        status: MemberStatus.WITHDRAWAL,
-        deletedAt: new Date(),
-        // 개인정보 처리
+        // 기존 회원 정보 삭제 처리
+        await manager.update(Member, { uuid: member.uuid }, {
+          email: `withdrawn_${member.uuid}@deleted.account`,  // not null 때문에 특수한 이메일 형식으로 변경
+          hashedEmail: `withdrawn_${member.uuid}`,  // not null 때문에 해시된 이메일도 특수한 형식으로 변경
+          name: '[withdrawn member]',
+          nickname: '[withdrawn member]',
+          phoneNumber: null,
+          socialProfiles: null,
+          status: MemberStatus.WITHDRAWAL,
+          deletedAt: new Date(),
+          // 추가적인 개인정보 필드들도 null 처리
+          // 보안 관련 필드 초기화 추가
+          password: null,
+          passwordChangedAt: null,
+          passwordResetToken: null,
+          passwordResetTokenExpiresAt: null,
+          verificationToken: null,
+          verificationTokenExpiresAt: null,
+          twoFactorSecret: null
+        });
+
+        return true;
       });
-      return true;
-    });
-    return result;
+    } catch (error) { 
+      // 에러 로깅
+      this.logger.error(`Failed to withdraw member: ${member.uuid}`, error.stack);
+      throw new InternalServerErrorException('회원 탈퇴 처리 중 오류가 발생했습니다.');
+    }
   }
 
   // 이메일로 멤버 조회 (로그인 시 사용)
@@ -134,7 +159,34 @@ export class MembersRepository {
 
   // 멤버 상세 정보 조회 (회원 정보 페이지 등에 사용)
   async findOneWithFullDetails(uuid: string): Promise<Member | null> {
-    return this.memberRepository.findOne({ where: { uuid } });
+    return this.memberRepository.findOne({ 
+      where: { uuid },
+      select: {
+        id: true,
+        uuid: true,
+        email: true,
+        hashedEmail: true,
+        name: true,
+        nickname: true,
+        provider: true,
+        providerId: true,
+        status: true,
+        createdAt: true,
+        lastLoginAt: true,
+        emailVerified: true,
+        marketingAgreed: true,
+        tokenVersion: true,
+        levelInfo: {
+          level: true,
+          experience: true
+        },
+        points: {
+          total: true,
+          purchase: true,
+          reward: true
+        }
+      }
+    });
   }
 
   // 이메일로 멤버 상세 정보 조회 (회원 정보 페이지 등에 사용)
