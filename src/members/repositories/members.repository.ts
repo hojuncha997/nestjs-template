@@ -176,6 +176,7 @@ export class MembersRepository {
         emailVerified: true,
         marketingAgreed: true,
         tokenVersion: true,
+        password: true,
         levelInfo: {
           level: true,
           experience: true
@@ -206,6 +207,12 @@ export class MembersRepository {
         loginAttempts: true,
         lockoutUntil: true,
         lastLoginAt: true,
+        tokenVersion: true,
+        preferences: {
+          language: true,
+          timezone: true,
+          theme: true
+        }
       }
     });
   }

@@ -17,14 +17,16 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
-  BadRequestException
+  BadRequestException,
+  ValidationPipe,
+  UnauthorizedException
 } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { MemberStatus } from '@common/enums';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
-import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto } from './dto';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto, UpdatePasswordDto } from './dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -120,8 +122,7 @@ export class MembersController {
   })
   @HttpCode(HttpStatus.NO_CONTENT)
   async withdraw(@Request() req, @Body() withdrawRequestDto: WithdrawRequestDto): Promise<void> {
-    // Entity로 조회
-    const member = await this.membersService.findOneByUuidAsEntity(req.member.uuid);
+    const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
     
     // 이미 탈퇴한 회원인지 체크
     if (member.status === MemberStatus.WITHDRAWAL) {
@@ -226,6 +227,33 @@ export class MembersController {
     return this.membersService.resetPassword(
       resetPasswordDto.token, 
       resetPasswordDto.newPassword
+    );
+  }
+
+  /**
+   * 사용자가 로그인 이후 비밀번호 업데이트
+   */
+  // @Put('update-password') 명칭을 이렇게 하면 상단의 update로 인식되어 오류 발생.
+  @Put('me/password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '비밀번호 업데이트' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '비밀번호 업데이트 성공', 
+  })
+  async updatePassword(
+    @Request() req,
+    @Body() updatePasswordDto: UpdatePasswordDto
+  ) {
+    console.log('req.user: ', req.user);
+    console.log('updatePasswordDto: ', updatePasswordDto);
+
+    const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
+    
+    return this.membersService.updatePassword(
+      member,  // 완전한 Member 엔티티
+      updatePasswordDto.currentPassword, 
+      updatePasswordDto.newPassword
     );
   }
 

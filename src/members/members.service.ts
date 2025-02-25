@@ -18,6 +18,7 @@ import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
 import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
 import { WithdrawnMember } from './entities/withdrawn-member.entity';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
+// import { AuthService } from '@auth/services/auth.service';
 @Injectable()
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
@@ -25,6 +26,7 @@ export class MembersService {
   constructor(
     private readonly membersRepository: MembersRepository,
     private readonly emailService: EmailService,
+    // private readonly authService: AuthService,
   ) {}
 
   // 회원가입 시 약관 동의 검증
@@ -526,6 +528,27 @@ export class MembersService {
       throw new NotFoundException('회원을 찾을 수 없습니다.');
     }
     return member;  // Entity 그대로 반환
+  }
+
+  async updatePassword(member: Member, currentPassword: string, newPassword: string): Promise<MemberResponseDto> {
+    // 현재 비밀번호 확인
+    const isPasswordValid = await bcrypt.compare(currentPassword, member.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('현재 비밀번호가 일치하지 않습니다.');
+    }
+
+    // 새 비밀번호 해시화 및 업데이트
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedMember = await this.membersRepository.updateMember(member.uuid, {
+      password: hashedPassword,
+      passwordChangedAt: new Date(),
+      tokenVersion: member.tokenVersion + 1  // 기존 토큰 무효화
+    });
+
+    return MemberMapper.toDto(updatedMember);
+    // 추후에는 토큰을 리프레시 해주는 로직도 추가해야 한다.
+    // 그래야 로그인 한 상태의 유저에게 버전이 증가한 토큰을 발급해줄 수 있다.
+    // 현재는 토큰 검증에서 토큰 버전에서 거르기 때문에 재로그인 해야 한다.
   }
 
 } 

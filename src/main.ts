@@ -3,7 +3,7 @@
 // 스프링부트의 @SpringBootApplication가 붙어있는 파일(메인함수가 있는 파일)에 대응되는 파일
 
 // 유효성 검사 파이프 추가
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
 import { NestFactory } from '@nestjs/core';
@@ -20,14 +20,26 @@ async function bootstrap() {
     // password는 보안상 출력하지 않음
   });
   
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'], // 모든 로그 레벨 활성화
+  });
   app.use(cookieParser());
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // DTO에 정의되지 않은 속성은 제거
-    forbidNonWhitelisted: true, // DTO에 정의되지 않은 속성이 있으면 요청 자체를 막음
-    transform: true, // 요청 데이터를 DTO 클래스의 인스턴스로 변환
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,  // DTO에 정의되지 않은 속성은 제거
+      transform: true,  // 요청 데이터를 DTO 클래스의 인스턴스로 변환
+      forbidNonWhitelisted: true,  // DTO에 정의되지 않은 속성이 있으면 에러
+      // forbidNonWhitelisted: false,  // DTO에 정의되지 않은 속성이 있으면 에러
+      transformOptions: {
+        enableImplicitConversion: true,  // 암시적 타입 변환 허용
+      },
+      exceptionFactory: (errors) => {
+        console.log('ValidationPipe errors:', errors);
+        return new BadRequestException(errors);
+      },
+    })
+  );
   
   // CORS 허용
   app.enableCors({
@@ -78,6 +90,20 @@ async function bootstrap() {
 
   console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
   
-  await app.listen(process.env.PORT ?? 3000);
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+  
+  const server = await app.listen(process.env.PORT ?? 3000);
+  const router = app.getHttpAdapter().getInstance()._router;
+  console.log('Registered routes:', 
+    router.stack
+      .filter(layer => layer.route)
+      .map(layer => ({
+        path: layer.route.path,
+        methods: layer.route.methods
+      }))
+  );
 }
 bootstrap();

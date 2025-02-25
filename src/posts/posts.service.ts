@@ -19,6 +19,8 @@ import { PostStatsRepository } from './post-stats.repository';
 import { PostMetaRepository } from './post-meta.repository';
 import { PostMeta } from './entities/post-meta.entity';
 import { BadRequestException } from '@nestjs/common';
+import { MemberStatus } from '@common/enums';
+import { Post } from './entities/post.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
 
@@ -160,27 +162,27 @@ export class PostsService {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
 
+        // 작성자가 탈퇴한 경우 처리
+        if (!postEntity.author || postEntity.author.status === MemberStatus.WITHDRAWAL) {
+            postEntity.author = {
+                ...postEntity.author,
+                nickname: '[withdrawn member]',
+            } as Member;
+        }
+
         // 조회수 증가
         await this.postsRepository.incrementViewCount(public_id);
 
         // DTO로 변환
         const postDetailResponseDto = this.postMapper.toDto(postEntity);
-        console.log('---------$$$--postEntity.author.id: ', postEntity.author.id);
-        console.log('---------$$$--member.id: ', member?.id);
+        console.log('---------@@@--postDetailResponseDto: ', postDetailResponseDto);
 
-        // member가 존재하고 게시글 작성자와 같은 경우  isAuthor를 true로 설정
+        // member가 존재하고 게시글 작성자와 같은 경우 isAuthor를 true로 설정
         if(member && postEntity.author.id === member.id) {
             postDetailResponseDto.isAuthor = true;
-            console.log('---------@@@--member.id: ', member?.id);
-            console.log('---------@@@--postEntity.author.id: ', postEntity.author.id);
-        } 
-            console.log('---------###--member.id: ', member?.id);
-            console.log('---------###--postEntity.author.id: ', postEntity.author.id);
-        
+        }
 
-        const result = postDetailResponseDto;
-        console.log('---------$$$--result.isAuthor: ', result.isAuthor);
-        return result;
+        return postDetailResponseDto;
     }
 
     async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostDetailResponseDto> {
