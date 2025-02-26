@@ -14,7 +14,9 @@
       "@common/*": ["src/common/*"],
       "@auth/*": ["src/auth/*"],
       "@members/*": ["src/members/*"],
-      "@decorators/*": ["src/decorators/*"]
+      "@decorators/*": ["src/decorators/*"],
+      "@posts/*": ["src/posts/*"],
+      "@category/*": ["src/category/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
