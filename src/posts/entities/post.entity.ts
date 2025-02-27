@@ -53,9 +53,9 @@ export class Post {
 
 
     // 여러 개의 포스트가 하나의 카테고리에 속할 수 있음
-    @ManyToOne(() => PostCategory, category => category.posts)
+    @ManyToOne(() => PostCategory)
     @JoinColumn({ name: 'category_id' })
-    category: PostCategory; //TypeORM 엔티티 내에서만 존재하는 가상 속성으로, 관련 PostCategory 객체 전체를 참조할 수 있게 해줌
+    category: PostCategory;
 
     @Column()
     title: string;

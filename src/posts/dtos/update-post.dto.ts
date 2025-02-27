@@ -1,6 +1,6 @@
 // src/posts/dto/update-post.dto.ts
 
-import { IsOptional, IsString, IsObject, IsArray, IsBoolean, IsEnum, ValidateNested, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsObject, IsArray, IsBoolean, IsEnum, ValidateNested, IsNumber, Allow } from 'class-validator';
 import { PostStatus } from '@common/enums/post-status.enum';
 // import { Type } from 'class-transformer';
 // import { CurationDto } from './curation.dto';
@@ -60,6 +60,11 @@ export class UpdatePostDto {
     @IsOptional()
     @IsString()
     metaDescription?: string;
+
+    @Allow()
+    @IsOptional()
+    @IsString()
+    categorySlug?: string;
 
     // @IsOptional()
     // @ValidateNested()

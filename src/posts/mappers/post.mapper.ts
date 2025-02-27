@@ -79,9 +79,9 @@ export class PostMapper {
         }
 
         // 선택적 필드들
-        if (dto.categoryId) {
+        if (dto.categorySlug) {
             const category = new PostCategory();
-            category.id = dto.categoryId;
+            category.slug = dto.categorySlug;
             entity.category = category;
         }
         if (dto.tags) entity.tags = dto.tags;
@@ -119,7 +119,7 @@ export class PostMapper {
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
         if (entity.category) {
-            dto.category = entity.category.slug;
+            dto.categorySlug = entity.category.slug;
         }
         dto.slug = entity.slug;
         dto.tags = entity.tags;
@@ -172,9 +172,9 @@ export class PostMapper {
         // 존재하는 필드만 업데이트
         if (dto.title !== undefined) entity.title = dto.title;
         if (dto.content !== undefined) entity.content = dto.content;
-        if (dto.categoryId !== undefined) {
+        if (dto.categorySlug !== undefined) {
             const category = new PostCategory();
-            category.id = dto.categoryId;
+            category.slug = dto.categorySlug;
             entity.category = category;
         }
         if (dto.slug !== undefined) entity.slug = dto.slug;
@@ -202,7 +202,7 @@ export class PostMapper {
         dto.excerpt = entity.meta?.excerpt || this.generateExcerpt(entity.content);
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
-        dto.category = entity.category ? entity.category.slug : '';
+        dto.categorySlug = entity.category ? entity.category.slug : '';
         dto.slug = entity.slug;
         dto.tags = entity.tags;
         dto.thumbnail = entity.thumbnail;

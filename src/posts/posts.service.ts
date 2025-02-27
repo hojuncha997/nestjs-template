@@ -22,6 +22,7 @@ import { BadRequestException } from '@nestjs/common';
 import { MemberStatus } from '@common/enums';
 import { Post } from './entities/post.entity';
 import { PostCategoryRepository } from '@category/repositories/post-category.repository';
+import { PostCategory } from '@category/entities/post-category.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
 
@@ -190,7 +191,7 @@ export class PostsService {
     private async findPostEntityByPublicId(public_id: string) {
         return await this.postsRepository.findOne({
             where: { public_id },
-            relations: ['category', 'meta', 'stats']
+            relations: ['category', 'meta', 'stats', 'author']  // author 관계 추가
         });
     }
 
@@ -225,7 +226,25 @@ export class PostsService {
     }
 
     async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostDetailResponseDto> {
+        // 먼저 카테고리를 조회
+        let category: PostCategory | null = null;
+        if (createPostDto.categorySlug) {
+            category = await this.categoryRepository.findOne({
+                where: { slug: createPostDto.categorySlug }
+            });
+            
+            if (!category) {
+                throw new NotFoundException(`Category with slug "${createPostDto.categorySlug}" not found`);
+            }
+        }
+
         const postEntity = this.postMapper.toEntity(createPostDto);
+        
+        // 찾은 실제 카테고리 엔티티를 설정
+        if (category) {
+            postEntity.category = category;  // 이렇게 하면 category_id가 자동으로 설정
+        }
+
         const displayName = member.nickname || member.email;
         postEntity.author = member;
         postEntity.author_display_name = displayName;
@@ -297,8 +316,25 @@ export class PostsService {
     }
 
     async getPostNavigation(publicId: string, options: { limit: number }) {
-        const currentPost = await this.findPostEntityByPublicId(publicId);
-        
+        // 현재 게시글 조회 시 category 관계를 명시적으로 포함
+        const currentPost = await this.postsRepository.findOne({
+            where: { public_id: publicId },
+            relations: ['category']
+        });
+
+        if (!currentPost) {
+            throw new NotFoundException('Post not found');
+        }
+
+        // 카테고리가 없는 경우 빈 결과 반환
+        if (!currentPost.category) {
+            return {
+                prev: [],
+                next: []
+            };
+        }
+
+        // 이전/다음 게시글 조회
         const [prev, next] = await Promise.all([
             this.postsRepository.find({
                 where: {
@@ -307,16 +343,6 @@ export class PostsService {
                 },
                 order: { createdAt: 'DESC' },
                 take: options.limit,
-                select: [
-                    'id',
-                    'public_id', 
-                    'title', 
-                    'slug', 
-                    'category',
-                    'createdAt', 
-                    'thumbnail',
-                    'content'
-                ],
                 relations: ['meta', 'stats']
             }),
             this.postsRepository.find({
@@ -326,16 +352,6 @@ export class PostsService {
                 },
                 order: { createdAt: 'ASC' },
                 take: options.limit,
-                select: [
-                    'id',
-                    'public_id', 
-                    'title', 
-                    'slug', 
-                    'category',
-                    'createdAt', 
-                    'thumbnail',
-                    'content'
-                ],
                 relations: ['meta', 'stats']
             })
         ]);
@@ -356,10 +372,22 @@ export class PostsService {
      * @returns {manual: 수동설정된 연관글[], auto: 자동추천된 연관글[]}
      */
     async getRelatedPosts(publicId: string, options: { limit: number }) {
-        // 현재 게시글 조회
-        const currentPost = await this.postsRepository.findEntityByPublicId(publicId);
+        // 현재 게시글 조회 시 category 관계를 명시적으로 포함
+        const currentPost = await this.postsRepository.findOne({
+            where: { public_id: publicId },
+            relations: ['category']  // category 관계를 명시적으로 포함
+        });
+
         if (!currentPost) {
             throw new NotFoundException('Post not found');
+        }
+
+        // 카테고리가 없는 경우 빈 결과 반환
+        if (!currentPost.category) {
+            return {
+                manual: [],
+                auto: []
+            };
         }
 
         // 1. 수동으로 설정된 연관 게시글 조회

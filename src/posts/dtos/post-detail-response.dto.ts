@@ -20,7 +20,8 @@ export class PostDetailResponseDto {
     @Expose()
     current_author_name: string;
 
-    category: string;
+    @Expose()
+    categorySlug: string;
     slug: string;
     tags: string[];
     thumbnail?: string;
