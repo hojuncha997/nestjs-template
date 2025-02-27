@@ -9,6 +9,7 @@ import { CurationType } from '@common/enums/curation-type.enum';
 import { PostStats } from './post-stats.entity';
 import { PostMeta } from './post-meta.entity';
 import { PostCuration } from './post-curation.entity';
+import { PostCategory } from '@category/entities/post-category.entity';
 const createId = init({ length: 10 });
 
 @Entity('post')
@@ -50,8 +51,11 @@ export class Post {
     @Column({ name: 'current_author_name' })
     current_author_name: string;
 
-    @Column({default: 'uncategorized'})
-    category: string;
+
+    // 여러 개의 포스트가 하나의 카테고리에 속할 수 있음
+    @ManyToOne(() => PostCategory, category => category.posts)
+    @JoinColumn({ name: 'category_id' })
+    category: PostCategory; //TypeORM 엔티티 내에서만 존재하는 가상 속성으로, 관련 PostCategory 객체 전체를 참조할 수 있게 해줌
 
     @Column()
     title: string;

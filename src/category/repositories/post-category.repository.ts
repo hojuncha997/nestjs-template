@@ -14,35 +14,35 @@ export class PostCategoryRepository extends Repository<PostCategory> {
         // 최상위 카테고리 데이터
         const rootCategories = [
             {
-                code: 'programming',
+                slug: 'programming',
                 name: 'Programming',
                 description: 'Programming related posts',
                 displayOrder: 1,
                 isActive: true,
             },
             {
-                code: 'general',
+                slug: 'general',
                 name: 'General',
                 description: 'General topics',
                 displayOrder: 2,
                 isActive: true,
             },
             {
-                code: 'review',
+                slug: 'review',
                 name: 'Review',
                 description: 'Product and service reviews',
                 displayOrder: 3,
                 isActive: true,
             },
             {
-                code: 'travel',
+                slug: 'travel',
                 name: 'Travel',
                 description: 'Travel experiences and tips',
                 displayOrder: 4,
                 isActive: true,
             },
             {
-                code: 'hobby',
+                slug: 'hobby',
                 name: 'Hobby',
                 description: 'Hobby and leisure activities',
                 displayOrder: 5,
@@ -54,14 +54,14 @@ export class PostCategoryRepository extends Repository<PostCategory> {
         const subCategories = {
             'programming': [
                 {
-                    code: 'javascript',
+                    slug: 'javascript',
                     name: 'JavaScript',
                     description: 'JavaScript programming',
                     displayOrder: 1,
                     isActive: true,
                 },
                 {
-                    code: 'python',
+                    slug: 'python',
                     name: 'Python',
                     description: 'Python programming',
                     displayOrder: 2,
@@ -73,14 +73,16 @@ export class PostCategoryRepository extends Repository<PostCategory> {
         try {
             // 최상위 카테고리 생성
             for (const categoryData of rootCategories) {
-                const existingCategory = await this.findOneBy({ code: categoryData.code });
+                const existingCategory = await this.findOneBy({ 
+                    slug: categoryData.slug  // code -> slug로 변경
+                });
                 if (!existingCategory) {
                     const category = this.create({
                         ...categoryData,
                         depth: 0,
                         parentId: null,
                     });
-                    const savedCategory = (await this.save(category)) as unknown as PostCategory;
+                    const savedCategory = (await this.save(category)) as PostCategory;
                     
                     // path 업데이트
                     await this.update(savedCategory.id, {
@@ -88,10 +90,12 @@ export class PostCategoryRepository extends Repository<PostCategory> {
                     });
 
                     // 하위 카테고리가 있다면 생성
-                    const subCategoryList = subCategories[categoryData.code];
+                    const subCategoryList = subCategories[categoryData.slug];  // code -> slug로 변경
                     if (subCategoryList) {
                         for (const subCategoryData of subCategoryList) {
-                            const existingSubCategory = await this.findOneBy({ code: subCategoryData.code });
+                            const existingSubCategory = await this.findOneBy({ 
+                                slug: subCategoryData.slug  // code -> slug로 변경
+                            });
                             if (!existingSubCategory) {
                                 const subCategory = this.create({
                                     ...subCategoryData,
@@ -102,7 +106,7 @@ export class PostCategoryRepository extends Repository<PostCategory> {
                                 
                                 // 하위 카테고리 path 업데이트
                                 await this.update(savedSubCategory.id, {
-                                    path: `${savedCategory.id}/${savedSubCategory.id}`
+                                    path: `${savedCategory.id}.${savedSubCategory.id}`  // '/' -> '.'
                                 });
                             }
                         }

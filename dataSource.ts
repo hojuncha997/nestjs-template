@@ -33,7 +33,12 @@ const dataSource = new DataSource({
     entities: [
         'src/guestbook/entities/guestbook.entity.ts',
         'src/members/entities/member.entity.ts',
-        'src/auth/entities/refresh-token.entity.ts'  // RefreshToken 엔티티 추가
+        'src/auth/entities/refresh-token.entity.ts',
+        'src/posts/entities/post.entity.ts',
+        'src/posts/entities/post-stats.entity.ts',
+        'src/posts/entities/post-meta.entity.ts',
+        'src/posts/entities/post-curation.entity.ts',
+        'src/category/entities/post-category.entity.ts'
     ],
     migrations: ['src/migrations/*{.ts,.js}'],
     namingStrategy: new SnakeNamingStrategy(),

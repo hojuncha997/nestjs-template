@@ -1,7 +1,7 @@
 // src/category/entities/post-category.entity.ts
 // 포스팅 카테고리 엔티티
 
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate, In } from 'typeorm';
 import { Post } from '@posts/entities/post.entity';
 
 @Entity({ name: 'post_category' })
@@ -17,12 +17,12 @@ export class PostCategory {
     // 카테고리 코드
     @Column({
         type: 'varchar',
-        name: 'code',
+        name: 'slug',
         length: 255,
         nullable: false,
         unique: true,
     })
-    code: string;
+    slug: string;
 
     // 카테고리 이름
     @Column({
@@ -109,4 +109,22 @@ export class PostCategory {
         name: 'updated_at',
     })
     updatedAt: Date;
+
+    @BeforeInsert()
+    @BeforeUpdate()
+    async generatePath() {
+        if (this.parentId) {
+            const parent = await this.parent;
+            if (parent) {
+                this.path = parent.path ? `${parent.path}/${this.id}` : `${this.id}`;
+                this.depth = parent.depth + 1;
+            } else {
+                this.path = `${this.id}`;
+                this.depth = 0;
+            }
+        } else {
+            this.path = `${this.id}`;
+            this.depth = 0;
+        }
+    }
 }

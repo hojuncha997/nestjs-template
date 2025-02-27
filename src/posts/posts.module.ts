@@ -14,6 +14,8 @@ import { PostStats } from './entities/post-stats.entity';
 import { PostStatsRepository } from './post-stats.repository';
 import { PostMetaRepository } from './post-meta.repository';
 import { PostMeta } from './entities/post-meta.entity';
+import { CategoryModule } from '@category/category.module';
+
 @Module({
     imports: [
         // TypeOrmModule.forFeature()는 특정 모듈에서 사용할 엔티티들의 Repository를 등록하기 위한 설정
@@ -23,6 +25,7 @@ import { PostMeta } from './entities/post-meta.entity';
         // 이를 통해 우리는 엔티티에 대한 데이터베이스 작업을 Repository 패턴으로 수행할 수 있음
         TypeOrmModule.forFeature([Post, PostStats, PostMeta]),
         MembersModule,
+        CategoryModule,
     ],
     providers: [
         PostsService,
@@ -33,6 +36,6 @@ import { PostMeta } from './entities/post-meta.entity';
         PostMetaRepository,
     ],
     controllers: [PostsController], 
-    // exports: [PostsService],
+    exports: [PostsService],
 })
 export class PostsModule {}

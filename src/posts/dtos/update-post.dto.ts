@@ -21,8 +21,8 @@ export class UpdatePostDto {
     author?: string;
 
     @IsOptional()
-    @IsString()
-    category?: string;
+    @IsNumber()
+    categoryId?: number;
 
     @IsOptional()
     @IsString()

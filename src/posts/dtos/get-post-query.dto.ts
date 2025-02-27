@@ -24,7 +24,7 @@ export class GetPostsQueryDto {
 
     @IsOptional()
     @IsString()
-    category?: string;
+    categorySlug?: string;
 
     @IsOptional()
     @IsString()

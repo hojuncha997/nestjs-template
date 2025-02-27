@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsObject, IsOptional, IsArray, IsBoolean, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsObject, IsOptional, IsArray, IsBoolean, IsEnum, IsNumber } from 'class-validator';
 import { PostStatus } from '@common/enums/post-status.enum';
 // import { ValidateNested } from 'class-validator';
 // import { Type } from 'class-transformer';
@@ -15,8 +15,8 @@ export class CreatePostDto {
     content: Record<string, any>;
 
     @IsOptional()
-    @IsString()
-    category?: string = 'uncategorized';
+    @IsNumber()
+    categoryId?: number;
 
     @IsOptional()
     @IsString()

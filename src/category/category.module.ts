@@ -7,12 +7,20 @@ import { PostCategory } from './entities/post-category.entity';
 import { PostCategoryRepository } from './repositories/post-category.repository';
 import { CategoryController } from './controllers/category.controller';
 import { CategoryService } from './services/category.service';
+import { CategoryMapper } from './mappers/category.mapper';
 
 @Module({
     imports: [TypeOrmModule.forFeature([PostCategory])],
     controllers: [CategoryController],
-    providers: [PostCategoryRepository, CategoryService],
-    exports: [PostCategoryRepository],
+    providers: [
+        CategoryService,
+        PostCategoryRepository,
+        CategoryMapper
+    ],
+    exports: [
+        CategoryService,
+        PostCategoryRepository
+    ]
 })
 export class CategoryModule implements OnModuleInit {
     constructor(private postCategoryRepository: PostCategoryRepository) {}

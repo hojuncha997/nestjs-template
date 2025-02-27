@@ -8,6 +8,7 @@ import { PostStatus } from '@common/enums/post-status.enum';
 import { UpdatePostDto } from '../dtos/update-post.dto';
 import { CurationType } from '@common/enums/curation-type.enum';
 import { PostListResponseDto } from '../dtos/post-list-response.dto';
+import { PostCategory } from '@category/entities/post-category.entity';
 
 @Injectable()
 export class PostMapper {
@@ -78,7 +79,11 @@ export class PostMapper {
         }
 
         // 선택적 필드들
-        if (dto.category) entity.category = dto.category;
+        if (dto.categoryId) {
+            const category = new PostCategory();
+            category.id = dto.categoryId;
+            entity.category = category;
+        }
         if (dto.tags) entity.tags = dto.tags;
         if (dto.thumbnail) entity.thumbnail = dto.thumbnail;
 
@@ -113,7 +118,9 @@ export class PostMapper {
         dto.content = entity.content;
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
-        dto.category = entity.category;
+        if (entity.category) {
+            dto.category = entity.category.slug;
+        }
         dto.slug = entity.slug;
         dto.tags = entity.tags;
         dto.thumbnail = entity.thumbnail;
@@ -165,7 +172,11 @@ export class PostMapper {
         // 존재하는 필드만 업데이트
         if (dto.title !== undefined) entity.title = dto.title;
         if (dto.content !== undefined) entity.content = dto.content;
-        if (dto.category !== undefined) entity.category = dto.category;
+        if (dto.categoryId !== undefined) {
+            const category = new PostCategory();
+            category.id = dto.categoryId;
+            entity.category = category;
+        }
         if (dto.slug !== undefined) entity.slug = dto.slug;
         if (dto.tags !== undefined) entity.tags = dto.tags;
         if (dto.thumbnail !== undefined) entity.thumbnail = dto.thumbnail;
@@ -191,7 +202,7 @@ export class PostMapper {
         dto.excerpt = entity.meta?.excerpt || this.generateExcerpt(entity.content);
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
-        dto.category = entity.category;
+        dto.category = entity.category ? entity.category.slug : '';
         dto.slug = entity.slug;
         dto.tags = entity.tags;
         dto.thumbnail = entity.thumbnail;

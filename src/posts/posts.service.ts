@@ -11,7 +11,7 @@ import { Member } from '@members/entities/member.entity';
 import { ForbiddenException } from '@nestjs/common';
 import { PostListResponseDto } from './dtos/post-list-response.dto';
 import { ListResponse } from '@common/types/list-response.types';
-import { LessThan, MoreThan, Brackets } from 'typeorm';
+import { LessThan, MoreThan, Brackets, Like } from 'typeorm';
 import { PostRelationRepository } from './post-relation.repository';
 import { PostRelation } from './entities/post-relation.entity';
 import { PostStats } from './entities/post-stats.entity';
@@ -21,6 +21,7 @@ import { PostMeta } from './entities/post-meta.entity';
 import { BadRequestException } from '@nestjs/common';
 import { MemberStatus } from '@common/enums';
 import { Post } from './entities/post.entity';
+import { PostCategoryRepository } from '@category/repositories/post-category.repository';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
 
@@ -35,7 +36,8 @@ export class PostsService {
         // private readonly postStatsRepository: Repository<PostStats>
         // 커스텀 레포지토리에는 @InjectRepository 처리가 돼 있음.
         private readonly postStatsRepository: PostStatsRepository,
-        private readonly postMetaRepository: PostMetaRepository
+        private readonly postMetaRepository: PostMetaRepository,
+        private readonly categoryRepository: PostCategoryRepository
     ) {}
 
     // async findAllPosts(): Promise<PostResponseDto[]> {
@@ -56,6 +58,7 @@ export class PostsService {
     //     };
     // }
     > {
+        console.log('---------@@@--query from service:', query);
         const { MAX_QUERY_LIMIT, DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } = QUERY_CONSTANTS;
 
         const limit = Math.min(query.limit || DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
@@ -64,7 +67,8 @@ export class PostsService {
         // 쿼리 빌더 생성
         const queryBuilder = this.postsRepository.createQueryBuilder('post')
             .leftJoinAndSelect('post.stats', 'stats')
-            .leftJoinAndSelect('post.meta', 'meta');  // meta 관계 추가
+            .leftJoinAndSelect('post.meta', 'meta')
+            .leftJoinAndSelect('post.category', 'category');  // 카테고리 조인 추가
 
 
 
@@ -88,12 +92,34 @@ export class PostsService {
         
         // 검색어
         if (query.search) {
-            queryBuilder.where('post.title ILIKE :search', { search: `%${query.search}%` });
+            queryBuilder.andWhere('post.title ILIKE :search', { search: `%${query.search}%` });
         }
     
         // 카테고리 필터
-        if (query.category) {
-            queryBuilder.andWhere('post.category = :category', { category: query.category });
+        if (query.categorySlug) {
+            const category = await this.categoryRepository.findOne({
+                where: { slug: query.categorySlug }
+            });
+            
+            console.log('---------@@@--found category:', category);
+            
+            if (category) {
+                // path가 '1/2' 형식이므로 이에 맞게 검색
+                const subCategories = await this.categoryRepository.find({
+                    where: [
+                        { id: category.id },  // 현재 카테고리
+                        { path: Like(`${category.path}/%`) },  // 직접 하위 카테고리
+                        { path: Like(`${category.path}`) }  // 현재 카테고리의 path와 정확히 일치
+                    ]
+                });
+
+                console.log('---------@@@--found sub categories:', subCategories);
+
+                const categoryIds = subCategories.map(cat => cat.id);
+                queryBuilder.andWhere('category.id IN (:...categoryIds)', {
+                    categoryIds
+                });
+            }
         }
     
         // 상태 필터
@@ -114,7 +140,10 @@ export class PostsService {
             queryBuilder.orderBy('post.createdAt', 'DESC');
         }
     
-        // 페이지네이션
+        // 쿼리 실행 전
+        console.log('---------@@@--final query:', queryBuilder.getSql());  // 최종 SQL 쿼리 확인
+        console.log('---------@@@--query parameters:', queryBuilder.getParameters());  // 쿼리 파라미터 확인
+
         // 필터링 된 총 게시글 수
         const total = await queryBuilder.getCount();
         // 필터링 된 게시글 목록
@@ -125,19 +154,8 @@ export class PostsService {
             .take(limit)
             // TypeORM의 메서드. 쿼리 결과를 엔티티 객체의 배열로 반환
             .getMany();
-    
-        // return {
-        //      //posts: posts,
-        //     //  posts: this.postMapper.toDtoList(posts),
-        //     //  메타 데이터
-        //     posts: this.postMapper.toListDtoList(posts),
-        //     meta: {
-        //         total,
-        //         page: page,
-        //         limit: limit,
-        //         totalPages: Math.ceil(total / limit)
-        //     }
-        // };
+
+        console.log('---------@@@--found posts:', posts);  // 조회된 포스트 확인
 
         return {
             data: this.postMapper.toListDtoList(posts),
@@ -152,7 +170,10 @@ export class PostsService {
 
     // 내부용 (조회수 증가 없음)
     private async findPostEntityByPublicId(public_id: string) {
-        return await this.postsRepository.findPostByPublicId(public_id);
+        return await this.postsRepository.findOne({
+            where: { public_id },
+            relations: ['category', 'meta', 'stats']
+        });
     }
 
     // 외부 API용 (조회수 증가 포함)
@@ -263,7 +284,7 @@ export class PostsService {
         const [prev, next] = await Promise.all([
             this.postsRepository.find({
                 where: {
-                    category: currentPost.category,
+                    category: { id: currentPost.category.id },
                     createdAt: LessThan(currentPost.createdAt)
                 },
                 order: { createdAt: 'DESC' },
@@ -282,7 +303,7 @@ export class PostsService {
             }),
             this.postsRepository.find({
                 where: {
-                    category: currentPost.category,
+                    category: { id: currentPost.category.id },
                     createdAt: MoreThan(currentPost.createdAt)
                 },
                 order: { createdAt: 'ASC' },
@@ -340,9 +361,9 @@ export class PostsService {
             // 2-1. 같은 카테고리의 글을 최신순으로 조회
             const autoRelated = await this.postsRepository
                 .createQueryBuilder('post')
-                .where('post.id != :postId', { postId: currentPost.id }) // 현재 글 제외
-                .andWhere('post.category = :category', { 
-                    category: currentPost.category 
+                .where('post.id != :postId', { postId: currentPost.id })
+                .andWhere('post.category.id = :categoryId', { 
+                    categoryId: currentPost.category.id 
                 })
                 .orderBy('post.createdAt', 'DESC')
                 .take(remainingCount)
