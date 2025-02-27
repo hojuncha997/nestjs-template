@@ -32,7 +32,7 @@ export class GetPostsQueryDto {
 
     @IsOptional()
     @IsString()
-    sortBy?: 'createdAt' | 'viewCount' | 'likeCount';
+    sortBy?: 'createdAt' | 'viewCount' | 'likeCount'; // 클라이언트 입력값 기준으로 정의
 
     @IsOptional()
     @IsString()

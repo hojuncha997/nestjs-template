@@ -134,8 +134,26 @@ export class PostsService {
     
         // 정렬
         if (query.sortBy) {
-            //쿼리 파라미터인 sortBy를 입력하는 경우 ASC만 사용. order는DESC
-            queryBuilder.orderBy(`post.${query.sortBy}`, query.order);
+            switch (query.sortBy) {
+                case 'createdAt':
+                    queryBuilder.orderBy('post.createdAt', query.order);
+                    break;
+                case 'viewCount':
+                    // 서브쿼리를 사용하여 정렬
+                    queryBuilder
+                        .addSelect('COALESCE(stats.view_count, 0)', 'view_count_order')  // stats는 이미 조인되어 있음
+                        .orderBy('view_count_order', query.order)
+                        .addOrderBy('post.createdAt', 'DESC');
+                    break;
+                case 'likeCount':
+                    queryBuilder
+                        .addSelect('COALESCE(stats.like_count, 0)', 'like_count_order')  // stats는 이미 조인되어 있음
+                        .orderBy('like_count_order', query.order)
+                        .addOrderBy('post.createdAt', 'DESC');
+                    break;
+                default:
+                    queryBuilder.orderBy('post.createdAt', 'DESC');
+            }
         } else {
             queryBuilder.orderBy('post.createdAt', 'DESC');
         }
