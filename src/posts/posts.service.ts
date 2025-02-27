@@ -271,7 +271,12 @@ export class PostsService {
     }
 
     async updatePost(public_id: string, updatePostDto: UpdatePostDto, member: Member): Promise<PostDetailResponseDto> {
-        const existingPost = await this.postsRepository.findPostByPublicId(public_id);
+        // 모든 필요한 관계를 포함하여 포스트 조회
+        const existingPost = await this.postsRepository.findOne({
+            where: { public_id },
+            relations: ['author', 'category', 'meta', 'stats']
+        });
+
         if (!existingPost) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
         }
@@ -279,10 +284,32 @@ export class PostsService {
         if (existingPost.author.id !== member.id) {
             throw new ForbiddenException('게시글을 수정할 권한이 없습니다.');
         }
-                
+
+        // 카테고리 업데이트 처리
+        if (updatePostDto.categorySlug) {
+            const category = await this.categoryRepository.findOne({
+                where: { slug: updatePostDto.categorySlug }
+            });
+            
+            if (!category) {
+                throw new NotFoundException(`Category with slug "${updatePostDto.categorySlug}" not found`);
+            }
+            
+            // 직접 category_id 설정
+            existingPost.category = category;
+            await this.postsRepository.update(existingPost.id, {
+                category: { id: category.id }
+            });
+        }
+            
+        // 나머지 필드 업데이트
         const updatedPost = this.postMapper.updateEntity(existingPost, updatePostDto);
-        const savedPost = await this.postsRepository.updatePost(updatedPost);
-        return this.postMapper.toDto(savedPost);
+        await this.postsRepository.save(updatedPost);
+        
+        // 저장된 포스트를 다시 모든 관계와 함께 조회
+        const refreshedPost = await this.findPostEntityByPublicId(public_id);
+        
+        return this.postMapper.toDto(refreshedPost);
     }
 
     async deletePost(public_id: string, member: Member): Promise<void> {
