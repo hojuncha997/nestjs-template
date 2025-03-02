@@ -15,6 +15,7 @@ import {
   BadRequestException,
   ConflictException,
   HttpException,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from '@auth/services/auth.service';
@@ -33,6 +34,7 @@ import { OptionalJwtAuthGuard } from '@auth/guards/optional-jwt-auth.guard';
 @Controller('auth')
 @UseInterceptors(AuthResponseInterceptor)
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
  constructor(private authService: AuthService, private membersService: MembersService) {}
 
  @Post('/local/login')  // 로컬 로그인 요청
@@ -58,8 +60,8 @@ export class AuthController {
    @Res({ passthrough: true }) response: Response,
    @Body() loginDto: LocalLoginDto,
  ) {
-  console.log('loginDto!!!!!!!s:', loginDto);
-  console.log('req.user!!!!!!!s:', req.user);
+  this.logger.log('loginDto!!!!!!!s:', loginDto);
+  this.logger.log('req.user!!!!!!!s:', req.user);
    return this.authService.localLogin(req.user, response, loginDto.clientType, loginDto.keepLoggedIn);
  }
 
@@ -179,11 +181,11 @@ async refresh(
   @Cookies('refresh_token') cookieToken: string,
 ) {
 
-  console.log('---------from auth controller: async refresh-----------------');
-  console.log('authHeader:', authHeader);
-  console.log('clientType:', clientType);
-  console.log('cookieToken:', cookieToken);
-  console.log('-------------------------------------------------------------');
+  this.logger.log('---------from auth controller: async refresh-----------------');
+  this.logger.log('authHeader:', authHeader);
+  this.logger.log('clientType:', clientType);
+  this.logger.log('cookieToken:', cookieToken);
+  this.logger.log('-------------------------------------------------------------');
   let refreshToken = cookieToken;
   
   if (!refreshToken && authHeader) {// 쿠키에 없으면 헤더에서 찾음
@@ -198,7 +200,6 @@ async refresh(
   }
 
   const result = await this.authService.refreshAccessToken(refreshToken, clientType);
-  // console.log('result:', result);
   return result;
 }
 
@@ -225,7 +226,7 @@ async refresh(
 
    // 토큰이 있든 없든 성공 응답
    const logoutResponse = { message: '로그아웃되었습니다.' };
-   console.log('logoutResponse:', logoutResponse);
+   this.logger.log('logoutResponse:', logoutResponse);
    return logoutResponse;
  }
 
@@ -249,8 +250,8 @@ async refresh(
   @Cookies('refresh_token') refresh_token: string,
    @Query('clientType') clientType: ClientType = ClientType.WEB
  ) {
-  console.log(" access-token 발급 요청 받음")
-  console.log("refresh_token: ", refresh_token)
+  this.logger.log(" access-token 발급 요청 받음")
+  this.logger.log("refresh_token: ", refresh_token)
 
   
    if (!refresh_token) {
@@ -258,7 +259,7 @@ async refresh(
    }
 
   const tokens = await this.authService.refreshAccessToken(refresh_token, clientType);
-  console.log("tokens: ", tokens)
+  this.logger.log("tokens: ", tokens)
   //  return {
   //   refresh_token: tokens.refresh_token,
   //   access_token: tokens.access_token

@@ -3,7 +3,7 @@
 // 스프링부트의 @SpringBootApplication가 붙어있는 파일(메인함수가 있는 파일)에 대응되는 파일
 
 // 유효성 검사 파이프 추가
-import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { ValidationPipe, BadRequestException , Logger} from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
 import { NestFactory } from '@nestjs/core';
@@ -11,8 +11,10 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+const logger = new Logger('Main');
+
 async function bootstrap() {
-  console.log('DB Connection Info:', {
+  logger.log('DB Connection Info:', {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     username: process.env.DB_USERNAME,
@@ -21,7 +23,9 @@ async function bootstrap() {
   });
   
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'], // 모든 로그 레벨 활성화
+    // logger: ['error', 'warn', 'log', 'debug', 'verbose'], // 모든 로그 레벨 활성화
+    // 프로덕션 환경에서는 로그 레벨을 제한하여 로그 파일 크기를 줄임
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
   app.use(cookieParser());
 
@@ -35,7 +39,7 @@ async function bootstrap() {
         enableImplicitConversion: true,  // 암시적 타입 변환 허용
       },
       exceptionFactory: (errors) => {
-        console.log('ValidationPipe errors:', errors);
+        logger.error('ValidationPipe errors:', errors);
         return new BadRequestException(errors);
       },
     })
@@ -88,16 +92,16 @@ async function bootstrap() {
     },
   });
 
-  console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
+  logger.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
   
   app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
+    logger.log(`${req.method} ${req.url}`);
     next();
   });
   
   const server = await app.listen(process.env.PORT ?? 3000);
   const router = app.getHttpAdapter().getInstance()._router;
-  console.log('Registered routes:', 
+  logger.log('Registered routes:', 
     router.stack
       .filter(layer => layer.route)
       .map(layer => ({

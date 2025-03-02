@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
@@ -7,6 +7,7 @@ import { PostStatus } from '@common/enums/post-status.enum';
 
 @Injectable()
 export class PostsRepository extends Repository<Post> {
+    private readonly logger = new Logger(PostsRepository.name);
     constructor(
         @InjectRepository(Post)
         private readonly repository: Repository<Post>
@@ -46,7 +47,7 @@ export class PostsRepository extends Repository<Post> {
         // console.log('---------DEBUG--Parameters:', { public_id });
 
         const result = await query.getOne();
-        console.log('---------DEBUG--Raw Result:', result);
+        this.logger.log('---------DEBUG--Raw Result:', result);
 
         return result;
     }

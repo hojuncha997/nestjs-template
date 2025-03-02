@@ -3,6 +3,7 @@
 import { GuestbookStatus } from '@common/enums/guestbook-status.enum';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { Member } from '@members/entities/member.entity';
+import { Logger } from '@nestjs/common';
 // import { customAlphabet } from 'nanoid/non-secure';  // customAlphabet 사용
 // import { randomBytes } from 'crypto';  // crypto 모듈 import 방식 변경
 // import { nanoid } from 'nanoid';  // crypto 대신 nanoid 사용
@@ -21,6 +22,7 @@ const createId = init({ length: 10 });
 @Index(['public_id'], { unique: true })  // uuid 인덱스를 public_id로 변경
 @Index(['status'])    // 발행된 게시물 목록 조회용
 export class Guestbook {
+    private readonly logger = new Logger(Guestbook.name);
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -38,7 +40,7 @@ export class Guestbook {
         
         // slug가 비어있는 경우에만 백업으로 생성
         if (!this.slug && this.title) {
-            console.log('BeforeInsert - Creating backup slug from title:', this.title);
+            this.logger.log('BeforeInsert - Creating backup slug from title:', this.title);
             this.slug = this.title
                 .trim()
                 .replace(/\s+/g, '-')
@@ -47,7 +49,7 @@ export class Guestbook {
                 .replace(/-+/g, '-')
                 .replace(/^-+|-+$/g, '')
                 .substring(0, 100);
-            console.log('BeforeInsert - Generated backup slug:', this.slug);
+            this.logger.log('BeforeInsert - Generated backup slug:', this.slug);
         }
     }
 

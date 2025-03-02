@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import * as crypto from 'crypto';
@@ -7,9 +7,7 @@ import { ClientType, AuthProvider, AuthProviderUrl } from '@common/enums/';
 import { AuthRepository } from '../repositories/auth.repository';
 import { MembersService } from '@members/members.service';
 import { Member } from '@members/entities/member.entity';
-// import { SocialLoginDto } from '@members/dto/social-login.dto';
 import { SocialLoginDto } from '@auth/dto';
-// import axios from 'axios';
 import { EmailUtil } from '@common/utils/email-util.util';
 
 export class RefreshTokenExpiredException extends UnauthorizedException {
@@ -55,6 +53,7 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
@@ -63,7 +62,7 @@ export class AuthService {
 
   async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
 
-    console.log('member from localLogin:', member);
+    this.logger.log('member from localLogin:', member);
     const user: AuthUser = {
       id: member.id,
       uuid: member.uuid,
@@ -79,7 +78,7 @@ export class AuthService {
       tokenVersion: member.tokenVersion || 0,
     };
 
-    console.log('user from localLogin:', user);
+    this.logger.log('user from localLogin:', user);
 
     const tokens = await this.login(user, clientType, keepLoggedIn);
     
@@ -97,10 +96,10 @@ export class AuthService {
   // }
 
   private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
-    console.log('authService login 호출됨');
+    this.logger.log('authService login 호출됨');
 
-    console.log('user.email from auth.service.login:',user.email);
-    console.log('user.nickname from auth.service.login:',user.nickname);
+    this.logger.log('user.email from auth.service.login:',user.email);
+    this.logger.log('user.nickname from auth.service.login:',user.nickname);
     
     const payload: JwtPayload = { 
       // email: EmailUtil.decryptEmail(user.email),
@@ -113,7 +112,7 @@ export class AuthService {
       keepLoggedIn: keepLoggedIn, // 추가
     };
     
-    console.log('Login attempt for user:', { id: user.id, email: user.email });
+    this.logger.log('Login attempt for user:', { id: user.id, email: user.email });
     
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
@@ -121,7 +120,7 @@ export class AuthService {
     
     // 생성된 토큰 디코드해서 확인
     const decodedToken = await this.jwtService.decode(accessToken);
-    console.log('생성된 토큰의 decoded 내용:', decodedToken);
+    this.logger.log('생성된 토큰의 decoded 내용:', decodedToken);
     
     const refreshToken = await this.jwtService.signAsync(payload, {
       
@@ -129,13 +128,13 @@ export class AuthService {
       expiresIn: keepLoggedIn ? '7d' : '24h',  // keepLoggedIn에 따라 만료 시간 설정    });
     });
 
-    console.log('Generated tokens. RefreshToken:', refreshToken.substring(0, 20) + '...');
+    this.logger.log('Generated tokens. RefreshToken:', refreshToken.substring(0, 20) + '...');
     
     try {
       await this.authRepository.saveRefreshToken(user.id, refreshToken, keepLoggedIn);
-      console.log('Refresh token saved successfully');
+      this.logger.log('Refresh token saved successfully');
     } catch (error) {
-      console.error('Error saving refresh token:', error);
+      this.logger.error('Error saving refresh token:', error);
       throw error;
     }
 
@@ -147,15 +146,15 @@ export class AuthService {
   }
 
   async refreshAccessToken(refreshToken: string, clientType: ClientType): Promise<any> {
-    console.log('Refresh token received:', refreshToken);
+    this.logger.log('Refresh token received:', refreshToken);
     
     // 토큰 검증
     const payload = await this.jwtService.verifyAsync(refreshToken);
-    console.log('Token verified:', payload);
+    this.logger.log('Token verified:', payload);
     
     // DB에서 리프레시 토큰 조회
     const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
-    console.log('Token data from DB:', tokenData);
+    this.logger.log('Token data from DB:', tokenData);
     
     if (!tokenData || tokenData.revoked) {
       throw new InvalidRefreshTokenException();
@@ -204,19 +203,19 @@ export class AuthService {
   }
 
   async validateMember(email: string, password: string): Promise<AuthUser | null> {
-    console.log('validateMember 호출됨');
-    console.log('email:', email);
-    console.log('password:', password);
+    this.logger.log('validateMember 호출됨');
+    this.logger.log('email:', email);
+    this.logger.log('password:', password);
     if (!email || !password) {
       throw new BadRequestException('이메일과 비밀번호를 모두 입력해주세요.');
     }
 
     // 이메일 해시값으로 사용자 조회
     const hashedEmail = EmailUtil.hashEmail(email);
-    console.log('해시된 이메일:', hashedEmail); // 디버깅 추가
+    this.logger.log('해시된 이메일:', hashedEmail); // 디버깅 추가
     
     const user = await this.membersService.findByHashedEmail(hashedEmail);
-    console.log('DB 조회 결과 raw:', user); // 디버깅 추가
+    this.logger.log('DB 조회 결과 raw:', user); // 디버깅 추가
     
     if (!user || !user.password) {
         throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
@@ -229,11 +228,11 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      console.log('비밀번호 불일치');
+      this.logger.log('비밀번호 불일치');
       await this.membersService.incrementLoginAttempts(email);
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     } else {
-      console.log('비밀번호 일치: ', isPasswordValid);
+      this.logger.log('비밀번호 일치: ', isPasswordValid);
     }
 
     // 이메일 복호화하여 원본 이메일 획득
@@ -255,7 +254,7 @@ export class AuthService {
       tokenVersion: user.tokenVersion || 0,
     };
     
-    console.log('반환되는 AuthUser:', authUser);
+    this.logger.log('반환되는 AuthUser:', authUser);
     return authUser;
   }
 
@@ -293,7 +292,7 @@ export class AuthService {
         throw new BadRequestException(`Unsupported provider: ${provider}`);
     }
     
-    console.log('url from getSocialLoginUrl:', url);
+    this.logger.log('url from getSocialLoginUrl:', url);
     return url;
   }
 
@@ -330,15 +329,12 @@ export class AuthService {
 
       return this.login(user, socialLoginDto.clientType, socialLoginDto.keepLoggedIn);
     } catch (error) {
-      console.error('Social login error:', error);
+      this.logger.error('Social login error:', error);
       throw error;
     }
   }
 
   async getGoogleToken(code: string) {
-    // console.log('code from getGoogleToken:', code);
-    // console.log('process.env.GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
-    // console.log('process.env.GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
     
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -355,7 +351,7 @@ export class AuthService {
     });
 
     const responseData = await response.text(); // 또는 response.json()
-    console.log('Response data:', responseData);
+    this.logger.log('Response data:', responseData);
 
     if (!response.ok) {
       throw new Error(`Google token error: ${responseData}`);
@@ -411,7 +407,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<any> {
     const member = await this.membersService.findByEmail(email);
-    console.log('member from validateUser:', member);
+    this.logger.log('member from validateUser:', member);
     
     if (member && await this.validatePassword(password, member.password)) {
       // 이메일 복호화 후 member 객체 반환
@@ -426,7 +422,7 @@ export class AuthService {
 
   private async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
     const result = await bcrypt.compare(password, hashedPassword);
-    console.log('result from validatePassword:', result);
+    this.logger.log('result from validatePassword:', result);
     return result;
   }
 } 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, BadRequestException, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, BadRequestException, DefaultValuePipe, ParseIntPipe, Logger } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
@@ -14,6 +14,7 @@ import { ListResponse } from '@common/types/list-response.types';
 @Controller('posts')
 // @UseGuards(JwtAuthGuard)
 export class PostsController {
+    private readonly logger = new Logger(PostsController.name);
     constructor(private readonly postsService: PostsService) {}
 
     @Public()
@@ -31,7 +32,7 @@ export class PostsController {
     // }
 
         // console.log('query', query);
-        console.log('---------!!!--포스팅 목록 조회');
+        this.logger.log('---------!!!--포스팅 목록 조회');
         const result = await this.postsService.findPostList(query);
         // console.log('result', result);
         return result;
@@ -45,8 +46,8 @@ export class PostsController {
         @GetMember(true) member: Member | null
     ) {
         const requestId = Date.now();
-        console.log(`---------!!!--포스팅 상세 조회 Request ID: ${requestId}`);
-        console.log('---------!!!--member:', member);  // member 정보도 함께 출력
+        this.logger.log(`---------!!!--포스팅 상세 조회 Request ID: ${requestId}`);
+        this.logger.log('---------!!!--member:', member);  // member 정보도 함께 출력
 
         const decodedSlugAndId = decodeURIComponent(slugAndId);
         const lastHyphenIndex = decodedSlugAndId.lastIndexOf('-');
@@ -82,9 +83,9 @@ export class PostsController {
         if (!decodedPublicId?.match(/^[a-z0-9]{10}$/i)) {
             throw new BadRequestException('Invalid public_id format');
         }
-        console.log('---------!!!--포스팅 수정');
-        console.log('---------!!!--public_id:', public_id);
-        console.log('---------!!!--member:', member.email);
+        this.logger.log('---------!!!--포스팅 수정');
+        this.logger.log('---------!!!--public_id:', public_id);
+        this.logger.log('---------!!!--member:', member.email);
 
         return await this.postsService.updatePost(public_id, post, member);
     }
@@ -101,9 +102,9 @@ export class PostsController {
             throw new BadRequestException('Invalid public_id format');
         }
 
-        console.log('---------!!!--포스팅 삭제');
-        console.log('---------!!!--public_id:', public_id);
-        console.log('---------!!!--member:', member.email);
+        this.logger.log('---------!!!--포스팅 삭제');
+        this.logger.log('---------!!!--public_id:', public_id);
+        this.logger.log('---------!!!--member:', member.email);
         return await this.postsService.deletePost(decodedPublicId, member);
     }
 

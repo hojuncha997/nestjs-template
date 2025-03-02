@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@auth/services/auth.service';
 import { MembersService } from '@members//members.service';
@@ -6,6 +6,7 @@ import { ClientType } from '@common/enums/client-type.enum';
 
 @Injectable()
 export class TokenRefreshMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(TokenRefreshMiddleware.name);
   constructor(
     private readonly authService: AuthService,
     private readonly membersService: MembersService
@@ -30,7 +31,7 @@ export class TokenRefreshMiddleware implements NestMiddleware {
         }
       } catch (error) {
         // 리프레시 실패는 무시 (public API 대응)
-        console.log('Token refresh failed:', error);
+        this.logger.log('Token refresh failed:', error);
       }
     }
 

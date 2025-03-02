@@ -1,5 +1,5 @@
 // auth.repository.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Member } from '@members/entities/member.entity';
@@ -7,6 +7,7 @@ import { RefreshToken } from '@auth/entities/refresh-token.entity';
 
 @Injectable()
 export class AuthRepository {
+ private readonly logger = new Logger(AuthRepository.name);
  constructor(
    @InjectRepository(RefreshToken)
    private refreshTokenRepository: Repository<RefreshToken>,
@@ -49,7 +50,7 @@ export class AuthRepository {
  }
 
  async saveRefreshToken(memberId: number, token: string, keepLoggedIn: boolean): Promise<void> {
-   console.log('Starting saveRefreshToken process for member:', memberId);
+   this.logger.log('Starting saveRefreshToken process for member:', memberId);
    
    await this.refreshTokenRepository.manager.transaction(async transactionalEntityManager => {
      // uuid로 정확한 member 찾기
@@ -73,7 +74,7 @@ export class AuthRepository {
        throw new Error(`Member not found with id: ${memberId}`);
      }
 
-     console.log('Found member for refresh token:', {
+     this.logger.log('Found member for refresh token:', {
        id: member.id,
        email: member.email,
        uuid: member.uuid
@@ -120,7 +121,7 @@ export class AuthRepository {
        }
      });
 
-     console.log('Saved refresh token verification:', {
+     this.logger.log('Saved refresh token verification:', {
        tokenId: verify?.id,
        memberEmail: verify?.member?.email,
        memberUuid: verify?.member?.uuid

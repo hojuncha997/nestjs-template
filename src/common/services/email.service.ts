@@ -1,7 +1,7 @@
 // src/common/services/email.service.ts
 // 이메일 서비스
 import { EmailUtil } from '@common/utils/email-util.util';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';  // 이메일 전송을 위한 패키지. pnpm add nodemailer @types/nodemailer
 
 interface EmailOptions {
@@ -13,7 +13,8 @@ interface EmailOptions {
 }
 
 @Injectable()
-export class EmailService {
+  export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter;
 
   // constructor() {
@@ -50,10 +51,10 @@ export class EmailService {
   async send(options: EmailOptions): Promise<void> {
     // 디버깅을 위한 로그
     if (options.context.verificationLink) {
-      console.log('Verification Link:', options.context.verificationLink);
+      this.logger.log('Verification Link:', options.context.verificationLink);
     }
     if (options.context.resetLink) {
-      console.log('Reset Link:', options.context.resetLink);
+      this.logger.log('Reset Link:', options.context.resetLink);
     }
 
     // 이메일 발송
@@ -65,6 +66,6 @@ export class EmailService {
     });
 
     // 개발 환경에서 이메일 확인용 URL 출력
-    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    this.logger.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
   }
 } 

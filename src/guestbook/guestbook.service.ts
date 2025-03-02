@@ -8,9 +8,10 @@ import { NotFoundException, ForbiddenException, ConflictException } from '@nestj
 import { GetGuestbooksQueryDto } from './dtos/get-guestbook-query.dto';
 import { QUERY_CONSTANTS } from '@common/constants/query-constants.contant';
 import { Member } from '../members/entities/member.entity';
-
+import { Logger } from '@nestjs/common';
 @Injectable()
 export class GuestbookService {
+    private readonly logger = new Logger(GuestbookService.name);
     constructor(
         private readonly guestbookRepository: GuestbookRepository, 
         private readonly guestbookMapper: GuestbookMapper
@@ -135,7 +136,7 @@ export class GuestbookService {
                 // TypeORM unique constraint violation error
                 if (error.code === '23505' && error.detail?.includes('public_id') && retryCount < MAX_RETRIES - 1) {
                     retryCount++;
-                    console.log(`nanoid collision occurred. Retrying... (${retryCount}/${MAX_RETRIES})`);
+                    this.logger.log(`nanoid collision occurred. Retrying... (${retryCount}/${MAX_RETRIES})`);
                     continue;
                 }
                 // 다른 에러이거나 최대 재시도 횟수를 초과한 경우

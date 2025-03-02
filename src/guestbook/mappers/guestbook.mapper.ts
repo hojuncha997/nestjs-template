@@ -1,6 +1,6 @@
 // src/guestbook/mappers/guestbook.mapper.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Guestbook } from '../entities/guestbook.entity';
 import { CreateGuestbookDto } from '../dtos/create-guestbook.dto';
 import { GuestbookResponseDto } from '../dtos/guestbook-response.dto'
@@ -8,6 +8,7 @@ import { GuestbookStatus } from '@common/enums/guestbook-status.enum';
 import { UpdateGuestbookDto } from '../dtos/update-guestbook.dto';
 @Injectable()
 export class GuestbookMapper {
+    private readonly logger = new Logger(GuestbookMapper.name);
    toEntity(dto: CreateGuestbookDto): Guestbook {
        const entity = new Guestbook();
        
@@ -18,7 +19,7 @@ export class GuestbookMapper {
 
        // 슬러그 생성 로직
        if (dto.title) {
-           console.log('Creating slug from title:', dto.title);  // 원본 타이틀
+           this.logger.log('Creating slug from title:', dto.title);  // 원본 타이틀
            const slug = dto.title
                .trim()
                .replace(/\s+/g, '-')  // 먼저 공백을 하이픈으로
@@ -28,7 +29,7 @@ export class GuestbookMapper {
                .replace(/^-+|-+$/g, '')  // 시작과 끝의 하이픈 제거
                .substring(0, 100);
            
-           console.log('Generated slug:', slug);  // 생성된 슬러그
+           this.logger.log('Generated slug:', slug);  // 생성된 슬러그
            entity.slug = slug;
        } else if (dto.slug) {
            entity.slug = dto.slug;

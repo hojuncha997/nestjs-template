@@ -2,9 +2,11 @@
 
 import { Entity, PrimaryColumn, Column, OneToOne, JoinColumn } from 'typeorm';
 import { Post } from './post.entity';
+import { Logger } from '@nestjs/common';
 
 @Entity('post_stats')
 export class PostStats {
+    private readonly logger = new Logger(PostStats.name);
     /*
     @PrimaryColumn() : 이 필드는 테이블의 기본 키로 사용된다.
     @JoinColumn({ name: 'post_id' }) : 이 필드는 Post 테이블의 id를 참조하는 외래 키 역할을 한다.
@@ -28,7 +30,7 @@ export class PostStats {
         where: { postId: 1 },
         relations: ['post']  // 이렇게 post 관계를 불러올 수 있음
     });
-    console.log(postStats.post.title);  // Post의 데이터에 접근 가능
+    this.logger.log(postStats.post.title);  // Post의 데이터에 접근 가능
     --------------------------------
 
     () => Post는 순환 참조를 피하기 위한 지연 로딩(lazy loading) 패턴

@@ -267,7 +267,7 @@ export class MembersService {
       throw new BadRequestException('이미 유효한 비밀번호 재설정 토큰이 존재합니다.');
     }
 
-    console.log('member from createPasswordResetToken: ', member);
+    this.logger.log('member from createPasswordResetToken: ', member);
 
     // 비밀번호 재설정 토큰(uuid, passwordResetToken), 만료 시간(passwordResetTokenExpiresAt) 생성하여 멤버 테이블 칼럼에 저장
     const updatedMember = await this.membersRepository.createPasswordResetToken(member);
@@ -348,12 +348,12 @@ export class MembersService {
       points: member.points
     };
 
-    console.log('Member to withdraw:', {
+    this.logger.log('Member to withdraw:', {
       uuid: member.uuid,
       email: member.email,
       hashedEmail: member.hashedEmail
     });
-    console.log('WithdrawnMember entity:', withdrawnMember);
+    this.logger.log('WithdrawnMember entity:', withdrawnMember);
 
     await this.membersRepository.withdrawMember(member, withdrawnMember);
   }
@@ -404,7 +404,7 @@ export class MembersService {
     // const member = await this.membersRepository.findByEmailWithFullDetails(email);
     const member = await this.membersRepository.findOneByEmailWithFullDetails(email); // 이메일은 암호화 돼 있음.
     if (member) {
-      console.log('Found member:', { 
+      this.logger.log('Found member:', { 
         ...member, 
         password: 'HIDDEN',
         status: member.status,
@@ -464,7 +464,7 @@ export class MembersService {
     memberEntity.provider = socialLoginDto.provider;
     memberEntity.providerId = socialLoginDto.providerId;
     
-    console.log('memberEntity before save:', {
+    this.logger.log('memberEntity before save:', {
       ...memberEntity,
       provider: memberEntity.provider,
       providerId: memberEntity.providerId
@@ -476,7 +476,7 @@ export class MembersService {
       throw new Error('회원 저장 실패: ID가 생성되지 않았습니다.');
     }
     
-    console.log('savedMember', savedMember);
+    this.logger.log('savedMember', savedMember);
     return MemberMapper.toDto(savedMember);
   }
 
@@ -485,9 +485,9 @@ export class MembersService {
   }
 
   async findByHashedEmail(hashedEmail: string) {
-    console.log('findByHashedEmail 호출됨. hashedEmail:', hashedEmail);
+    this.logger.log('findByHashedEmail 호출됨. hashedEmail:', hashedEmail);
     const member = await this.membersRepository.findByHashedEmail(hashedEmail);
-    console.log('DB 조회 결과:', member);
+    this.logger.log('DB 조회 결과:', member);
     return member;
   }
 

@@ -2,12 +2,13 @@
 // 로컬 인증 전략
 import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { AuthService } from '@auth/services/auth.service';
 import { MemberStatus } from '@common/enums'
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(LocalStrategy.name);
   constructor(private authService: AuthService) {
     super({
       usernameField: 'email',
@@ -16,8 +17,8 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(email: string, password: string): Promise<any> {
-    console.log('LocalStrategy validate - email:', email);
-    console.log('LocalStrategy validate - password:', password);
+    this.logger.log('LocalStrategy validate - email:', email);
+    this.logger.log('LocalStrategy validate - password:', password);
     
     const user = await this.authService.validateUser(email, password);
     if (!user) {

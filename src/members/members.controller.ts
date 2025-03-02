@@ -19,7 +19,8 @@ import {
   ForbiddenException,
   BadRequestException,
   ValidationPipe,
-  UnauthorizedException
+  UnauthorizedException,
+  Logger
 } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -31,6 +32,7 @@ import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMembe
 @ApiTags('members')
 @Controller('members')
 export class MembersController {
+  private readonly logger = new Logger(MembersController.name);
   constructor(private readonly membersService: MembersService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -245,8 +247,8 @@ export class MembersController {
     @Request() req,
     @Body() updatePasswordDto: UpdatePasswordDto
   ) {
-    console.log('req.user: ', req.user);
-    console.log('updatePasswordDto: ', updatePasswordDto);
+    this.logger.log('req.user: ', req.user);
+    this.logger.log('updatePasswordDto: ', updatePasswordDto);
 
     const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
     

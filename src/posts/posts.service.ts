@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PostsRepository } from './posts.repository';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
@@ -29,6 +29,8 @@ import { PostCategory } from '@category/entities/post-category.entity';
 
 @Injectable()
 export class PostsService {
+    private readonly logger = new Logger(PostsService.name);
+
     constructor(
         private readonly postsRepository: PostsRepository, 
         private readonly postMapper: PostMapper,
@@ -59,7 +61,7 @@ export class PostsService {
     //     };
     // }
     > {
-        console.log('---------@@@--query from service:', query);
+        this.logger.log('---------@@@--query from service:', query);
         const { MAX_QUERY_LIMIT, DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } = QUERY_CONSTANTS;
 
         const limit = Math.min(query.limit || DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
@@ -102,7 +104,7 @@ export class PostsService {
                 where: { slug: query.categorySlug }
             });
             
-            console.log('---------@@@--found category:', category);
+            this.logger.log('---------@@@--found category:', category);
             
             if (category) {
                 // path가 '1/2' 형식이므로 이에 맞게 검색
@@ -114,7 +116,7 @@ export class PostsService {
                     ]
                 });
 
-                console.log('---------@@@--found sub categories:', subCategories);
+                this.logger.log('---------@@@--found sub categories:', subCategories);
 
                 const categoryIds = subCategories.map(cat => cat.id);
                 queryBuilder.andWhere('category.id IN (:...categoryIds)', {
@@ -160,8 +162,8 @@ export class PostsService {
         }
     
         // 쿼리 실행 전
-        console.log('---------@@@--final query:', queryBuilder.getSql());  // 최종 SQL 쿼리 확인
-        console.log('---------@@@--query parameters:', queryBuilder.getParameters());  // 쿼리 파라미터 확인
+        this.logger.log('---------@@@--final query:', queryBuilder.getSql());  // 최종 SQL 쿼리 확인
+        this.logger.log('---------@@@--query parameters:', queryBuilder.getParameters());  // 쿼리 파라미터 확인
 
         // 필터링 된 총 게시글 수
         const total = await queryBuilder.getCount();
@@ -174,7 +176,7 @@ export class PostsService {
             // TypeORM의 메서드. 쿼리 결과를 엔티티 객체의 배열로 반환
             .getMany();
 
-        console.log('---------@@@--found posts:', posts);  // 조회된 포스트 확인
+        this.logger.log('---------@@@--found posts:', posts);  // 조회된 포스트 확인
 
         return {
             data: this.postMapper.toListDtoList(posts),
@@ -215,7 +217,7 @@ export class PostsService {
 
         // DTO로 변환
         const postDetailResponseDto = this.postMapper.toDto(postEntity);
-        console.log('---------@@@--postDetailResponseDto: ', postDetailResponseDto);
+        this.logger.log('---------@@@--postDetailResponseDto: ', postDetailResponseDto);
 
         // member가 존재하고 게시글 작성자와 같은 경우 isAuthor를 true로 설정
         if(member && postEntity.author.id === member.id) {
@@ -315,8 +317,8 @@ export class PostsService {
     async deletePost(public_id: string, member: Member): Promise<void> {
         // withDeleted: true로 설정하여 이미 삭제된 게시글도 조회 : 기본값은 false
         const existingPost = await this.postsRepository.findPostByPublicId(public_id, false);
-        console.log('---------!!!--public_id:', public_id);
-        console.log('---------!!!--existingPost:', existingPost);
+        this.logger.log('---------!!!--public_id:', public_id);
+        this.logger.log('---------!!!--existingPost:', existingPost);
 
         if (!existingPost) {
             throw new NotFoundException(`Post with ID "${public_id}" not found`);
