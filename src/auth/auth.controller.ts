@@ -103,7 +103,7 @@ export class AuthController {
      const tokens = await this.authService.socialLogin(socialLoginDto);
 
      // 4. 클라이언트 타입에 따른 처리
-     const successUrl = new URL(`/auth/${provider}/callback`, process.env.FRONTEND_URL);
+     const successUrl = new URL(`/auth/${provider}/callback`, process.env.CLIENT_URL);
     //  successUrl.searchParams.set('provider', provider);
 
      if (clientType === ClientType.WEB) {
@@ -131,7 +131,7 @@ export class AuthController {
     //  errorUrl.searchParams.set('message', '소셜 로그인 실패');
     //  return res.redirect(errorUrl.toString());
     const errorCode = error instanceof ConflictException ? 'EMAIL_EXISTS' : 'LOGIN_FAILED';
-    const errorUrl = new URL('/auth/error', process.env.FRONTEND_URL);
+    const errorUrl = new URL('/auth/error', process.env.CLIENT_URL);
     errorUrl.searchParams.set('code', errorCode);
     return res.redirect(errorUrl.toString());
    }

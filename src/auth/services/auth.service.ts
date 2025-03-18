@@ -68,7 +68,7 @@ export class AuthService {
       uuid: member.uuid,
       email: member.email,
       nickname: member.nickname,
-      role: member.role || 'USER',
+      role: member.role,
       preferences: member.preferences || {
         language: 'ko',
         timezone: 'Asia/Seoul',

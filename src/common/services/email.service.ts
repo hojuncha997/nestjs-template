@@ -59,7 +59,7 @@ interface EmailOptions {
 
     // 이메일 발송
     const info = await this.transporter.sendMail({
-      from: '"personal-cms" <noreply@myapp.com>',
+      from: `"${process.env.SERVICE_NAME}" <noreply@myapp.com>`,
       to: options.to,
       subject: options.subject,
       html: options.html,  // 전달받은 html 사용

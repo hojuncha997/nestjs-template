@@ -26,6 +26,13 @@ async function bootstrap() {
     // logger: ['error', 'warn', 'log', 'debug', 'verbose'], // 모든 로그 레벨 활성화
     // 프로덕션 환경에서는 로그 레벨을 제한하여 로그 파일 크기를 줄임
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn', 'log', 'debug', 'verbose'],
+    // cors: false, // CORS를 완전히 비활성화. nginx에서 처리하기 때문에 여기서는 비활성화
+    cors: {
+      origin: ['http://localhost:3001'],  // 프론트엔드 주소
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    }
   });
   app.use(cookieParser());
 
@@ -46,18 +53,15 @@ async function bootstrap() {
   );
   
   // CORS 허용
-  app.enableCors({
-    origin: true, // 또는 특정 도메인 'http://localhost:3000'
-    credentials: true, // 쿠키 전송을 위해 필요
-    exposedHeaders: ['set-cookie'], // 쿠키 헤더 노출
-    /*
-    브라우저는 CORS 정책에 따라 쿠키를 처리
-    하지만 CORS 설정에 credentials: true가 없으면:
-    브라우저가 다른 도메인의 쿠키를 수락하지 않음
-    Set-Cookie 헤더가 무시됨
-    결과적으로 리프레시 토큰이 저장되지 않음
-    */
-  });
+  // app.enableCors({
+  //   origin: 'https://blog.notesandnodes.com',
+  //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  //   credentials: true,
+  //   allowedHeaders: '*',  // 모든 헤더 허용
+  //   exposedHeaders: ['Set-Cookie'],  // 모든 헤더 노출
+  //   preflightContinue: false,
+  //   optionsSuccessStatus: 204,
+  // });
   
   // 전역 경로 설정: 경로 앞에 /api/v1 붙이기
   app.setGlobalPrefix('api/v1');  // /api/v1/members
