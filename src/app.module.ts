@@ -14,6 +14,7 @@ import databaseConfig from './config/database.config';
 import { getTypeOrmConfig } from './config/typeorm.config';
 import { PostsModule } from './posts/posts.module';
 import { GuestbookModule } from './guestbook/guestbook.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { GuestbookModule } from './guestbook/guestbook.module';
     GuestbookModule,
     // 카테고리 모듈
     CategoryModule,
+    ProjectsModule,
   ],
 })
 export class AppModule {}

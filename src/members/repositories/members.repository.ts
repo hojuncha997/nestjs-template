@@ -203,6 +203,7 @@ export class MembersRepository {
         nickname: true,
         password: true,
         status: true,
+        role: true,
         emailVerified: true,
         loginAttempts: true,
         lockoutUntil: true,

@@ -1,58 +1,76 @@
 import { Injectable } from '@nestjs/common';
 import { PostCategoryRepository } from '../repositories/post-category.repository';
+import { ProjectCategoryRepository } from '../repositories/project-category.repository';
 import { PostCategory } from '../entities/post-category.entity';
-import { In } from 'typeorm';
+import { ProjectCategory } from '../entities/project-category.entity';
+import { Like } from 'typeorm';
 
 @Injectable()
 export class CategoryService {
     constructor(
-        private readonly postCategoryRepository: PostCategoryRepository
+        private readonly postCategoryRepository: PostCategoryRepository,
+        private readonly projectCategoryRepository: ProjectCategoryRepository
     ) {}
 
-    async getPostCategories({
-        parentSlug,
-        includeInactive = false
-    }: {
+    async getPostCategories({ parentSlug, includeInactive = false }: {
         parentSlug?: string;
         includeInactive?: boolean;
     }): Promise<PostCategory[]> {
-        const queryBuilder = this.postCategoryRepository
-            .createQueryBuilder('category')
-            .leftJoinAndSelect('category.children', 'children')
-            .orderBy('category.displayOrder', 'ASC')
-            .addOrderBy('children.displayOrder', 'ASC');
-
+        const whereConditions: any = {};
+        
         if (!includeInactive) {
-            queryBuilder.andWhere('category.isActive = :isActive', { isActive: true });
+            whereConditions.isActive = true;
         }
 
         if (parentSlug) {
-            const parent = await this.postCategoryRepository.findOne({
+            const parentCategory = await this.postCategoryRepository.findOne({
                 where: { slug: parentSlug }
             });
 
-            if (parent) {
-                queryBuilder.andWhere('category.path LIKE :path', {
-                    path: `${parent.path}%`
-                });
+            if (parentCategory) {
+                whereConditions.path = Like(`${parentCategory.path}/%`);
             }
         } else {
-            // 최상위 카테고리만 조회
-            queryBuilder.andWhere('category.parentId IS NULL');
+            whereConditions.parent = null;
         }
 
-        return queryBuilder.getMany();
+        return this.postCategoryRepository.find({
+            where: whereConditions,
+            relations: ['children'],
+            order: {
+                id: 'ASC'
+            }
+        });
     }
 
-    async getFullPath(category: PostCategory): Promise<string> {
-        if (!category.path) {
-            return category.name;
+    async getProjectCategories({ parentSlug, includeInactive = false }: {
+        parentSlug?: string;
+        includeInactive?: boolean;
+    }): Promise<ProjectCategory[]> {
+        const whereConditions: any = {};
+        
+        if (!includeInactive) {
+            whereConditions.isActive = true;
         }
 
-        const categoryIds = category.path.split('.').map(id => parseInt(id));
-        const categories = await this.postCategoryRepository.findBy({
-            id: In(categoryIds)
+        if (parentSlug) {
+            const parentCategory = await this.projectCategoryRepository.findOne({
+                where: { slug: parentSlug }
+            });
+
+            if (parentCategory) {
+                whereConditions.path = Like(`${parentCategory.path}/%`);
+            }
+        } else {
+            whereConditions.parent = null;
+        }
+
+        return this.projectCategoryRepository.find({
+            where: whereConditions,
+            relations: ['children'],
+            order: {
+                id: 'ASC'
+            }
         });
-        return categories.map(cat => cat.name).join(' > ');
     }
 } 

@@ -103,8 +103,9 @@ export class AuthController {
      const tokens = await this.authService.socialLogin(socialLoginDto);
 
      // 4. 클라이언트 타입에 따른 처리
-     const successUrl = new URL(`/auth/${provider}/callback`, process.env.CLIENT_URL);
-    //  successUrl.searchParams.set('provider', provider);
+     const successUrl = new URL('/auth/social/callback', process.env.CLIENT_URL);
+     successUrl.searchParams.set('provider', provider);
+     successUrl.searchParams.set('status', 'success');
 
      if (clientType === ClientType.WEB) {
        // 데스크톱: httpOnly 쿠키에 리프레시 토큰 설정

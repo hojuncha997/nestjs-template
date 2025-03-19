@@ -16,6 +16,7 @@
       "@members/*": ["src/members/*"],
       "@decorators/*": ["src/decorators/*"],
       "@posts/*": ["src/posts/*"],
+      "@projects/*": ["src/projects/*"],
       "@category/*": ["src/category/*"]
     },
     "incremental": true,

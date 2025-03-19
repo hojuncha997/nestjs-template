@@ -30,7 +30,21 @@ export class CategoryController {
         };
     }
 
-    // 나중에 프로젝트 카테고리 엔드포인트 추가 가능
-    // @Get('projects')
-    // async getProjectCategories() { ... }
+    @Get('projects')
+    async getProjectCategories(
+        @Query('parent') parentSlug?: string,
+        @Query('includeInactive') includeInactive?: boolean
+    ): Promise<CategoryListResponseDto> {
+        const categories = await this.categoryService.getProjectCategories({
+            parentSlug,
+            includeInactive: includeInactive || false
+        });
+
+        return {
+            data: this.categoryMapper.toDtoList(categories),
+            meta: {
+                total: categories.length
+            }
+        };
+    }
 }

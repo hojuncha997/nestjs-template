@@ -3,28 +3,24 @@
 
 import { Injectable } from '@nestjs/common';
 import { PostCategory } from '../entities/post-category.entity';
+import { ProjectCategory } from '../entities/project-category.entity';
 import { CategoryResponseDto } from '../dtos/category-response.dto';
 
 @Injectable()
 export class CategoryMapper {
-    toDto(entity: PostCategory): CategoryResponseDto {
+    toDto(category: PostCategory | ProjectCategory): CategoryResponseDto {
         const dto = new CategoryResponseDto();
-        dto.id = entity.id;
-        dto.slug = entity.slug;
-        dto.name = entity.name;
-        dto.description = entity.description;
-        dto.depth = entity.depth;
-        dto.displayOrder = entity.displayOrder;
-        dto.isActive = entity.isActive;
-
-        if (entity.children?.length > 0) {
-            dto.children = entity.children.map(child => this.toDto(child));
-        }
-
+        dto.id = category.id;
+        dto.name = category.name;
+        dto.slug = category.slug;
+        dto.description = category.description;
+        dto.isActive = category.isActive;
+        dto.path = category.path;
+        dto.children = category.children ? category.children.map(child => this.toDto(child)) : [];
         return dto;
     }
 
-    toDtoList(entities: PostCategory[]): CategoryResponseDto[] {
-        return entities.map(entity => this.toDto(entity));
+    toDtoList(categories: (PostCategory | ProjectCategory)[]): CategoryResponseDto[] {
+        return categories.map(category => this.toDto(category));
     }
 } 

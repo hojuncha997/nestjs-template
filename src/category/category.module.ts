@@ -4,22 +4,26 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostCategory } from './entities/post-category.entity';
+import { ProjectCategory } from './entities/project-category.entity';
 import { PostCategoryRepository } from './repositories/post-category.repository';
+import { ProjectCategoryRepository } from './repositories/project-category.repository';
 import { CategoryController } from './controllers/category.controller';
 import { CategoryService } from './services/category.service';
 import { CategoryMapper } from './mappers/category.mapper';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([PostCategory])],
+    imports: [TypeOrmModule.forFeature([PostCategory, ProjectCategory])],
     controllers: [CategoryController],
     providers: [
         CategoryService,
         PostCategoryRepository,
+        ProjectCategoryRepository,
         CategoryMapper
     ],
     exports: [
         CategoryService,
-        PostCategoryRepository
+        PostCategoryRepository,
+        ProjectCategoryRepository
     ]
 })
 export class CategoryModule implements OnModuleInit {

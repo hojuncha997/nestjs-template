@@ -3,11 +3,10 @@
 
 export class CategoryResponseDto {
     id: number;
-    slug: string;
     name: string;
+    slug: string;
     description: string;
-    depth: number;
-    displayOrder: number;
     isActive: boolean;
+    path?: string;
     children?: CategoryResponseDto[];
 } 
