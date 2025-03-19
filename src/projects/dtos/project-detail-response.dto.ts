@@ -19,6 +19,9 @@ export class ProjectDetailResponseDto {
     current_author_name: string;
 
     @Expose()
+    author_uuid: string;
+
+    @Expose()
     categorySlug: string;
     slug: string;
     tags: string[];
@@ -35,9 +38,6 @@ export class ProjectDetailResponseDto {
 
     @Expose()
     isSecret: boolean;
-
-    @Expose()
-    isAuthor: boolean;
 
     // 새로운 필드들
     description?: string;

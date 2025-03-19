@@ -21,6 +21,9 @@ export class PostDetailResponseDto {
     current_author_name: string;
 
     @Expose()
+    author_uuid: string;
+
+    @Expose()
     categorySlug: string;
     slug: string;
     tags: string[];
@@ -37,9 +40,6 @@ export class PostDetailResponseDto {
 
     @Expose()
     isSecret: boolean;
-
-    @Expose()
-    isAuthor: boolean;
 
     // 새로운 필드들
     description?: string;

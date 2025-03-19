@@ -219,11 +219,6 @@ export class PostsService {
         const postDetailResponseDto = this.postMapper.toDto(postEntity);
         this.logger.log('---------@@@--postDetailResponseDto: ', postDetailResponseDto);
 
-        // member가 존재하고 게시글 작성자와 같은 경우 isAuthor를 true로 설정
-        if(member && postEntity.author.id === member.id) {
-            postDetailResponseDto.isAuthor = true;
-        }
-
         return postDetailResponseDto;
     }
 

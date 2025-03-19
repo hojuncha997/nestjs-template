@@ -92,6 +92,7 @@ export class ProjectMapper {
         dto.content = entity.content;
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
+        dto.author_uuid = entity.author?.uuid;
         if (entity.category) {
             dto.categorySlug = entity.category.slug;
         }
@@ -101,7 +102,6 @@ export class ProjectMapper {
         dto.status = entity.status;
         dto.isFeatured = entity.isFeatured;
         dto.isSecret = entity.isSecret;
-        dto.isAuthor = false;
 
         dto.createdAt = entity.createdAt;
         dto.updatedAt = entity.updatedAt;

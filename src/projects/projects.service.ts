@@ -171,10 +171,6 @@ export class ProjectsService {
         const projectDetailResponseDto = this.projectMapper.toDto(projectEntity);
         this.logger.log('---------@@@--projectDetailResponseDto: ', projectDetailResponseDto);
 
-        if(member && projectEntity.author.id === member.id) {
-            projectDetailResponseDto.isAuthor = true;
-        }
-
         return projectDetailResponseDto;
     }
 

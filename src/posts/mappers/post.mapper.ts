@@ -118,6 +118,7 @@ export class PostMapper {
         dto.content = entity.content;
         dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
+        dto.author_uuid = entity.author?.uuid;
         if (entity.category) {
             dto.categorySlug = entity.category.slug;
         }
@@ -127,7 +128,6 @@ export class PostMapper {
         dto.status = entity.status;
         dto.isFeatured = entity.isFeatured;
         dto.isSecret = entity.isSecret;
-        dto.isAuthor = false;
 
         // 날짜 관련
         dto.createdAt = entity.createdAt;
@@ -150,11 +150,6 @@ export class PostMapper {
             dto.coverImageAlt = entity.meta.coverImageAlt;
             dto.metaDescription = entity.meta.metaDescription;
         }
-
-        // 큐레이션 정보
-        // if (entity.curation) {
-        //     dto.curation = entity.curation;
-        // }
 
         return dto;
     }
