@@ -174,21 +174,22 @@ export class MembersService {
    */
   async sendVerificationEmail(member: Member): Promise<void> {
     const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${member.verificationToken}`;
+    const decryptedEmail = EmailUtil.decryptEmail(member.email);
     
     const html = `
       <h1>이메일 인증</h1>
-      <p>안녕하세요 ${member.name || member.email}님,</p>
+      <p>안녕하세요 ${member.name || decryptedEmail}님,</p>
       <p>아래 링크를 클릭하여 이메일 인증을 완료해주세요:</p>
       <a href="${verificationLink}" target="_blank" rel="noopener noreferrer">이메일 인증하기</a>
       <p>이 링크는 24시간 동안 유효합니다.</p>
     `;
 
     await this.emailService.send({
-      to: EmailUtil.decryptEmail(member.email),
+      to: decryptedEmail,
       subject: '회원가입 인증을 완료해주세요',
       html,
       context: {
-        name: member.name || member.email,
+        name: member.name || decryptedEmail,
         verificationLink,
         expiresIn: '24시간'
       }
