@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Member } from '@members/entities/member.entity';
 import { RefreshToken } from '@auth/entities/refresh-token.entity';
+import { TokenRevokeReason } from '@common/enums/token-revoke-reason.enum';
 
 @Injectable()
 export class AuthRepository {
@@ -129,29 +130,28 @@ export class AuthRepository {
    });
  }
 
-//  async revokeRefreshToken(token: string, reason: TokenRevokeReason): Promise<boolean> {
-  async revokeRefreshToken(token: string): Promise<boolean> {
+ async revokeRefreshToken(token: string): Promise<boolean> {
+   this.logger.log('토큰 파기 시도 - token:', token.substring(0, 10) + '...');
    
-  const result = await this.refreshTokenRepository.update(
+   const result = await this.refreshTokenRepository.update(
      { token, revoked: false },
      { 
        revoked: true,
        revokedAt: new Date(),
-      //  revokedReason: reason
+       revokedReason: TokenRevokeReason.USER_LOGOUT
      }
    );
+   
+   this.logger.log('토큰 파기 결과 - affected rows:', result.affected);
    return result.affected > 0;
  }
 
-//  async revokeAllRefreshTokens(memberId: number, reason: TokenRevokeReason): Promise<void> {
-  async revokeAllRefreshTokens(memberId: number): Promise<void> {
-
+ async revokeAllRefreshTokens(memberId: number): Promise<void> {
    await this.refreshTokenRepository.update(
      { member: { id: memberId }, revoked: false },
      { 
        revoked: true,
        revokedAt: new Date(),
-      //  revokedReason: reason
      }
    );
  }

@@ -79,7 +79,7 @@ export class AuthController {
 
 
  // 소셜 로그인 콜백 처리
- @Get('social/:provider/callback')
+ @Get('/social/:provider/callback')
  @ApiOperation({ summary: '소셜 로그인 콜백 처리' })
  async socialCallback(
   //  @Param('provider') provider: AuthProvider,
@@ -218,14 +218,30 @@ async refresh(
    @Body('refresh_token') bodyToken: string,
    @Res({ passthrough: true }) res: Response,
  ) {
-   // 쿠키는 무조건 삭제
-   res.clearCookie('refresh_token', {
+   try {
+     // 쿠키나 바디에서 토큰 확인
+     const refreshToken = cookieToken || bodyToken;
+     const userUuid = req.user?.uuid;
+
+     // 토큰이 있는 경우만 서비스 호출 시도
+     if (refreshToken && userUuid) {
+       const result = await this.authService.logout(refreshToken, userUuid);
+       this.logger.log('토큰 파기 결과:', result);
+     }
+   } catch (error) {
+     // 에러 발생 시 로그 기록
+     this.logger.error('토큰 파기 실패:', error);
+     // 에러가 발생해도 로그아웃은 계속 진행
+   } finally {
+     // 결과와 상관없이 항상 쿠키는 삭제
+     res.clearCookie('refresh_token', {
        httpOnly: true,
        secure: process.env.NODE_ENV === 'production',
        sameSite: 'lax'
-   });
+     });
+   }
 
-   // 토큰이 있든 없든 성공 응답
+   // 토큰 파기 성공 여부와 관계없이 로그아웃 성공 응답
    const logoutResponse = { message: '로그아웃되었습니다.' };
    this.logger.log('logoutResponse:', logoutResponse);
    return logoutResponse;
