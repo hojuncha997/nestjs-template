@@ -22,18 +22,22 @@ async function bootstrap() {
     // password는 보안상 출력하지 않음
   });
   
+  // 환경 변수 로드
   const app = await NestFactory.create(AppModule, {
-    // logger: ['error', 'warn', 'log', 'debug', 'verbose'], // 모든 로그 레벨 활성화
-    // 프로덕션 환경에서는 로그 레벨을 제한하여 로그 파일 크기를 줄임
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn', 'log', 'debug', 'verbose'],
-    // cors: false, // CORS를 완전히 비활성화. nginx에서 처리하기 때문에 여기서는 비활성화
-    cors: {
-      origin: ['http://localhost:3001'],  // 프론트엔드 주소
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    }
+    
+    // NODE_ENV에 따라 CORS 설정을 다르게 적용
+    cors: process.env.NODE_ENV === 'production' 
+      ? false  // 프로덕션 환경에서는 CORS 비활성화 (nginx에서 처리)
+      : {      // 개발 환경에서는 CORS 설정 활성화
+          origin: ['http://localhost:3001'],
+          credentials: true,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+          allowedHeaders: ['Content-Type', 'Authorization'],
+        }
   });
+
+  // HTTP 요청에 포함된 쿠키를 자동으로 파싱
   app.use(cookieParser());
 
   app.useGlobalPipes(
@@ -96,14 +100,9 @@ async function bootstrap() {
     },
   });
 
-  logger.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-  
-  app.use((req, res, next) => {
-    logger.log(`${req.method} ${req.url}`);
-    next();
-  });
-  
-  const server = await app.listen(process.env.PORT ?? 3000);
+  // 포트 번호 설정
+  const port = process.env.PORT ?? 3000;
+  const server = await app.listen(port);
   const router = app.getHttpAdapter().getInstance()._router;
   logger.log('Registered routes:', 
     router.stack
