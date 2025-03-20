@@ -27,10 +27,16 @@ import { CategoryMapper } from './mappers/category.mapper';
     ]
 })
 export class CategoryModule implements OnModuleInit {
-    constructor(private postCategoryRepository: PostCategoryRepository) {}
+    constructor(
+        private postCategoryRepository: PostCategoryRepository,
+        private projectCategoryRepository: ProjectCategoryRepository
+    ) {}
 
     async onModuleInit() {
-        // 카테고리 초기화 (app.module.ts 에서 호출)
-        await this.postCategoryRepository.initializeCategories();
+        // 카테고리 초기화
+        await Promise.all([
+            this.postCategoryRepository.initializeCategories(),
+            this.projectCategoryRepository.initializeCategories()
+        ]);
     }
 }

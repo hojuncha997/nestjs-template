@@ -111,8 +111,7 @@ export class PostsService {
                 const subCategories = await this.categoryRepository.find({
                     where: [
                         { id: category.id },  // 현재 카테고리
-                        { path: Like(`${category.path}/%`) },  // 직접 하위 카테고리
-                        { path: Like(`${category.path}`) }  // 현재 카테고리의 path와 정확히 일치
+                        { path: Like(`${category.path}/%`) }  // 하위 카테고리
                     ]
                 });
 

@@ -75,20 +75,27 @@ export class ProjectsService {
             this.logger.log('---------@@@--found category:', category);
             
             if (category) {
-                const subCategories = await this.categoryRepository.find({
-                    where: [
-                        { id: category.id },
-                        { path: Like(`${category.path}/%`) },
-                        { path: Like(`${category.path}`) }
-                    ]
-                });
+                const categoryPath = category.path;
+                const subCategories = await this.categoryRepository
+                    .createQueryBuilder('category')
+                    .where('category.id = :categoryId', { categoryId: category.id })
+                    .orWhere('category.path LIKE :pathPattern', { 
+                        pathPattern: `${categoryPath}/%` 
+                    })
+                    .getMany();
 
                 this.logger.log('---------@@@--found sub categories:', subCategories);
 
-                const categoryIds = subCategories.map(cat => cat.id);
-                queryBuilder.andWhere('category.id IN (:...categoryIds)', {
-                    categoryIds
-                });
+                if (subCategories.length > 0) {
+                    const categoryIds = subCategories.map(cat => cat.id);
+                    queryBuilder.andWhere('project.category_id IN (:...categoryIds)', {
+                        categoryIds
+                    });
+                } else {
+                    queryBuilder.andWhere('project.category_id = :categoryId', {
+                        categoryId: category.id
+                    });
+                }
             }
         }
     

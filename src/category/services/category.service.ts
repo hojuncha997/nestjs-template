@@ -16,61 +16,64 @@ export class CategoryService {
         parentSlug?: string;
         includeInactive?: boolean;
     }): Promise<PostCategory[]> {
-        const whereConditions: any = {};
-        
-        if (!includeInactive) {
-            whereConditions.isActive = true;
-        }
-
         if (parentSlug) {
-            const parentCategory = await this.postCategoryRepository.findOne({
+            const parent = await this.postCategoryRepository.findOne({
                 where: { slug: parentSlug }
             });
 
-            if (parentCategory) {
-                whereConditions.path = Like(`${parentCategory.path}/%`);
+            if (parent) {
+                return this.postCategoryRepository.createQueryBuilder('category')
+                    .leftJoinAndSelect('category.children', 'children')
+                    .leftJoinAndSelect('children.children', 'grandChildren')
+                    .where('category.path LIKE :pathPattern', { 
+                        pathPattern: `${parent.path}/%` 
+                    })
+                    .andWhere(includeInactive ? '1=1' : 'category.isActive = :isActive', { isActive: true })
+                    .orderBy('category.displayOrder', 'ASC')
+                    .addOrderBy('children.displayOrder', 'ASC')
+                    .addOrderBy('grandChildren.displayOrder', 'ASC')
+                    .getMany();
             }
-        } else {
-            whereConditions.parent = null;
         }
 
-        return this.postCategoryRepository.find({
-            where: whereConditions,
-            relations: ['children'],
-            order: {
-                id: 'ASC'
-            }
-        });
+        return this.postCategoryRepository.findAllCategories(includeInactive);
     }
 
     async getProjectCategories({ parentSlug, includeInactive = false }: {
         parentSlug?: string;
         includeInactive?: boolean;
     }): Promise<ProjectCategory[]> {
-        const whereConditions: any = {};
-        
-        if (!includeInactive) {
-            whereConditions.isActive = true;
-        }
-
-        if (parentSlug) {
-            const parentCategory = await this.projectCategoryRepository.findOne({
-                where: { slug: parentSlug }
-            });
-
-            if (parentCategory) {
-                whereConditions.path = Like(`${parentCategory.path}/%`);
-            }
-        } else {
-            whereConditions.parent = null;
-        }
-
-        return this.projectCategoryRepository.find({
-            where: whereConditions,
-            relations: ['children'],
+        // 모든 카테고리를 한 번에 가져오기
+        const allCategories = await this.projectCategoryRepository.find({
+            where: {
+                isActive: !includeInactive ? true : undefined
+            },
             order: {
+                displayOrder: 'ASC',
                 id: 'ASC'
             }
         });
+
+        // 카테고리 맵 생성
+        const categoryMap = new Map<number, ProjectCategory>();
+        allCategories.forEach(category => {
+            category.children = [];
+            categoryMap.set(category.id, category);
+        });
+
+        // 트리 구조 구성
+        const rootCategories: ProjectCategory[] = [];
+        allCategories.forEach(category => {
+            if (category.parentId === null) {
+                rootCategories.push(category);
+            } else {
+                const parent = categoryMap.get(category.parentId);
+                if (parent) {
+                    parent.children.push(category);
+                }
+            }
+        });
+
+        return rootCategories;
     }
 } 

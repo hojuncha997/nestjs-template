@@ -4,119 +4,188 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { PostCategory } from '@category/entities/post-category.entity';
 
+interface CategoryData {
+    slug: string;
+    name: string;
+    description?: string;
+    displayOrder: number;
+    isActive: boolean;
+    children?: CategoryData[];
+}
+
 @Injectable()
 export class PostCategoryRepository extends Repository<PostCategory> {
+    private readonly MAX_DEPTH = 3;
+
     constructor(dataSource: DataSource) {
         super(PostCategory, dataSource.createEntityManager());
     }
 
+    private async createCategoryIfNotExists(
+        categoryData: CategoryData,
+        parentId: number | null = null,
+        depth: number = 0
+    ): Promise<PostCategory | null> {
+        const existing = await this.findOne({
+            where: { slug: categoryData.slug }
+        });
+
+        if (existing) {
+            // 기존 카테고리가 있다면 depth와 display_order 업데이트
+            if (existing.depth !== depth || existing.displayOrder !== categoryData.displayOrder) {
+                await this.update(existing.id, { 
+                    depth,
+                    displayOrder: categoryData.displayOrder 
+                });
+                existing.depth = depth;
+                existing.displayOrder = categoryData.displayOrder;
+            }
+            return existing;
+        }
+
+        const { children, ...categoryFields } = categoryData;
+        
+        const category = this.create({
+            ...categoryFields,
+            parentId,
+            depth
+        });
+
+        const savedCategory = await this.save(category);
+
+        // path 생성 로직
+        let path = `${categoryData.displayOrder}`;
+        if (parentId) {
+            const parent = await this.findOne({ where: { id: parentId } });
+            if (parent && parent.path) {
+                path = `${parent.path}/${categoryData.displayOrder}`;
+            }
+        }
+
+        // path 업데이트
+        await this.update(savedCategory.id, { path });
+        
+        return savedCategory;
+    }
+
+    private async createCategoriesWithDepth(
+        categories: CategoryData[],
+        parentId: number | null,
+        currentDepth: number
+    ): Promise<void> {
+        if (currentDepth >= this.MAX_DEPTH) {
+            console.warn(`Maximum depth (${this.MAX_DEPTH}) reached. Skipping deeper categories.`);
+            return;
+        }
+
+        for (const categoryData of categories) {
+            const category = await this.createCategoryIfNotExists(
+                categoryData,
+                parentId,
+                currentDepth
+            );
+
+            if (category && categoryData.children) {
+                await this.createCategoriesWithDepth(
+                    categoryData.children,
+                    category.id,
+                    currentDepth + 1
+                );
+            }
+        }
+    }
+
     async initializeCategories() {
-        // 최상위 카테고리 데이터
-        const rootCategories = [
+        // 카테고리 데이터
+        const categories = [
             {
-                slug: 'programming',
-                name: 'Programming',
-                description: 'Programming related posts',
+                slug: 'it',
+                name: 'IT',
+                description: 'IT 관련 포스트',
                 displayOrder: 1,
                 isActive: true,
-            },
-            {
-                slug: 'general',
-                name: 'General',
-                description: 'General topics',
-                displayOrder: 2,
-                isActive: true,
+                children: [
+                    {
+                        slug: 'javascript',
+                        name: 'JavaScript',
+                        description: 'JavaScript 관련 포스트',
+                        displayOrder: 1,
+                        isActive: true
+                    }
+                ]
             },
             {
                 slug: 'review',
-                name: 'Review',
-                description: 'Product and service reviews',
+                name: '리뷰',
+                description: '다양한 리뷰 포스트',
+                displayOrder: 2,
+                isActive: true,
+                children: [
+                    {
+                        slug: 'book',
+                        name: '책',
+                        description: '책 리뷰',
+                        displayOrder: 1,
+                        isActive: true
+                    }
+                ]
+            },
+            {
+                slug: 'daily',
+                name: '일상',
+                description: '일상적인 이야기',
                 displayOrder: 3,
-                isActive: true,
-            },
-            {
-                slug: 'travel',
-                name: 'Travel',
-                description: 'Travel experiences and tips',
-                displayOrder: 4,
-                isActive: true,
-            },
-            {
-                slug: 'hobby',
-                name: 'Hobby',
-                description: 'Hobby and leisure activities',
-                displayOrder: 5,
-                isActive: true,
+                isActive: true
             }
         ];
 
-        // 하위 카테고리 데이터
-        const subCategories = {
-            'programming': [
-                {
-                    slug: 'javascript',
-                    name: 'JavaScript',
-                    description: 'JavaScript programming',
-                    displayOrder: 1,
-                    isActive: true,
-                },
-                {
-                    slug: 'python',
-                    name: 'Python',
-                    description: 'Python programming',
-                    displayOrder: 2,
-                    isActive: true,
-                }
-            ]
-        };
-
         try {
-            // 최상위 카테고리 생성
-            for (const categoryData of rootCategories) {
-                const existingCategory = await this.findOneBy({ 
-                    slug: categoryData.slug  // code -> slug로 변경
-                });
-                if (!existingCategory) {
-                    const category = this.create({
-                        ...categoryData,
-                        depth: 0,
-                        parentId: null,
-                    });
-                    const savedCategory = (await this.save(category)) as PostCategory;
-                    
-                    // path 업데이트
-                    await this.update(savedCategory.id, {
-                        path: `${savedCategory.id}`
-                    });
-
-                    // 하위 카테고리가 있다면 생성
-                    const subCategoryList = subCategories[categoryData.slug];  // code -> slug로 변경
-                    if (subCategoryList) {
-                        for (const subCategoryData of subCategoryList) {
-                            const existingSubCategory = await this.findOneBy({ 
-                                slug: subCategoryData.slug  // code -> slug로 변경
-                            });
-                            if (!existingSubCategory) {
-                                const subCategory = this.create({
-                                    ...subCategoryData,
-                                    depth: 1,
-                                    parentId: savedCategory.id,
-                                });
-                                const savedSubCategory = (await this.save(subCategory)) as unknown as PostCategory;
-                                
-                                // 하위 카테고리 path 업데이트
-                                await this.update(savedSubCategory.id, {
-                                    path: `${savedCategory.id}.${savedSubCategory.id}`  // '/' -> '.'
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+            await this.createCategoriesWithDepth(categories, null, 0);
             return true;
         } catch (error) {
             console.error('Error initializing categories:', error);
             return false;
         }
+    }
+
+    async findAllCategories(includeInactive: boolean = false): Promise<PostCategory[]> {
+        return this.createQueryBuilder('category')
+            .leftJoinAndSelect('category.children', 'children')
+            .leftJoinAndSelect('children.children', 'grandChildren')
+            .where(includeInactive ? '1=1' : 'category.isActive = :isActive', { isActive: true })
+            .andWhere('category.parentId IS NULL')
+            .orderBy('category.displayOrder', 'ASC')
+            .addOrderBy('children.displayOrder', 'ASC')
+            .addOrderBy('grandChildren.displayOrder', 'ASC')
+            .getMany();
+    }
+
+    async getPostCategories({ parentSlug, includeInactive = false }: {
+        parentSlug?: string;
+        includeInactive?: boolean;
+    }): Promise<PostCategory[]> {
+        const queryBuilder = this.createQueryBuilder('category');
+
+        if (parentSlug) {
+            const parent = await this.findOne({ where: { slug: parentSlug } });
+            if (parent) {
+                queryBuilder
+                    .where('category.path LIKE :pathPattern', { 
+                        pathPattern: `${parent.path}/%` 
+                    });
+            }
+        } else {
+            queryBuilder
+                .where('category.parentId IS NULL');
+        }
+
+        if (!includeInactive) {
+            queryBuilder.andWhere('category.isActive = :isActive', { isActive: true });
+        }
+
+        queryBuilder
+            .orderBy('category.displayOrder', 'ASC');
+
+        return queryBuilder.getMany();
     }
 }
