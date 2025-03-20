@@ -406,8 +406,15 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    const member = await this.membersService.findByEmail(email);
+    const hashedEmail = EmailUtil.hashEmail(email);
+    const member = await this.membersService.findByHashedEmail(hashedEmail);
     this.logger.log('member from validateUser:', member);
+    
+    // 소셜 로그인 사용자인 경우 (비밀번호가 없는 경우)
+    if (member && !member.password) {
+      this.logger.log('소셜 로그인 사용자입니다. 이메일/비밀번호 로그인을 사용할 수 없습니다.');
+      throw new UnauthorizedException('소셜 로그인으로 가입한 계정입니다. 소셜 로그인을 사용해주세요.');
+    }
     
     if (member && await this.validatePassword(password, member.password)) {
       // 이메일 복호화 후 member 객체 반환
@@ -421,6 +428,9 @@ export class AuthService {
   }
 
   private async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
+    this.logger.log('validatePassword 호출됨');
+    this.logger.log('password:', password ? '존재함' : '없음');
+    this.logger.log('hashedPassword:', hashedPassword ? '존재함' : '없음');
     const result = await bcrypt.compare(password, hashedPassword);
     this.logger.log('result from validatePassword:', result);
     return result;
