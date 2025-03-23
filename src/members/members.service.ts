@@ -1,6 +1,6 @@
 // src/members/members.service.ts
 // 회원 관리 서비스
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, HttpStatus } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, HttpStatus, UnauthorizedException } from '@nestjs/common';
 
 import { Member } from './entities/member.entity';
 import { MemberResponseDto, CreateMemberDto, UpdateMemberDto, CreateSocialMemberDto } from './dto';
@@ -18,6 +18,7 @@ import { NicknameGenerationUtil } from '@common/utils/nickname-generation.util';
 import { PasswordResetTokenResponseDto } from './dto/password-reset-token-response.dto';
 import { WithdrawnMember } from './entities/withdrawn-member.entity';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
+import { MemberProfileDto } from './dto/member-profile.dto';
 // import { AuthService } from '@auth/services/auth.service';
 @Injectable()
 export class MembersService {
@@ -550,6 +551,53 @@ export class MembersService {
     // 추후에는 토큰을 리프레시 해주는 로직도 추가해야 한다.
     // 그래야 로그인 한 상태의 유저에게 버전이 증가한 토큰을 발급해줄 수 있다.
     // 현재는 토큰 검증에서 토큰 버전에서 거르기 때문에 재로그인 해야 한다.
+  }
+
+  /**
+   * members.service.ts 에서 사용하는 메서드
+   * 닉네임 변경
+   */
+  async updateNickname(member: Member, newNickname: string): Promise<MemberResponseDto> {
+    // 닉네임 중복 체크
+    const isNicknameExists = await this.membersRepository.existsByNickname(newNickname);
+    if (isNicknameExists) {
+      throw new BadRequestException('이미 사용 중인 닉네임입니다.');
+    }
+
+    // 닉네임 업데이트
+    const updatedMember = await this.membersRepository.updateMember(member.uuid, {
+      nickname: newNickname
+    });
+
+    return MemberMapper.toDto(updatedMember);
+  }
+
+  async getMemberProfile(uuid: string): Promise<MemberProfileDto> {
+    const member = await this.findOneByUuid(uuid);
+    if (!member) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    return {
+      email: EmailUtil.decryptEmail(member.email),
+      name: member.name,
+      nickname: member.nickname,
+      profileImage: member.profileImage,
+      status: member.status,
+      emailVerified: member.emailVerified,
+      lastLoginAt: member.lastLoginAt,
+      preferences: member.preferences || {
+        language: Language.KO,
+        timezone: 'Asia/Seoul',
+        theme: Theme.LIGHT
+      },
+      notificationSettings: member.notificationSettings,
+      points: member.points,
+      levelInfo: member.levelInfo,
+      marketingAgreed: member.marketingAgreed,
+      termsAgreed: member.termsAgreed,
+      privacyAgreed: member.privacyAgreed
+    };
   }
 
 } 

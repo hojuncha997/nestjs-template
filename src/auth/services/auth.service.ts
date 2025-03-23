@@ -38,15 +38,8 @@ interface AuthUser {
 }
 
 interface JwtPayload {
-  email: string;
-  nickname: string;
   sub: string;    // uuid
   role: string;
-  preferences: {
-    language: string;
-    timezone: string;
-    theme: string;
-  };
   tokenVersion: number;
   keepLoggedIn: boolean;
 }
@@ -102,17 +95,13 @@ export class AuthService {
     this.logger.log('user.nickname from auth.service.login:',user.nickname);
     
     const payload: JwtPayload = { 
-      // email: EmailUtil.decryptEmail(user.email),
-      email: user.email,
-      nickname: user.nickname,
       sub: user.uuid,
       role: user.role,
-      preferences: user.preferences,
       tokenVersion: user.tokenVersion,
-      keepLoggedIn: keepLoggedIn, // 추가
+      keepLoggedIn: keepLoggedIn,
     };
     
-    this.logger.log('Login attempt for user:', { id: user.id, email: user.email });
+    this.logger.log('Login attempt for user:', { id: user.id, uuid: user.uuid });
     
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
@@ -123,9 +112,7 @@ export class AuthService {
     this.logger.log('생성된 토큰의 decoded 내용:', decodedToken);
     
     const refreshToken = await this.jwtService.signAsync(payload, {
-      
-      // expiresIn: '7d',\
-      expiresIn: keepLoggedIn ? '7d' : '24h',  // keepLoggedIn에 따라 만료 시간 설정    });
+      expiresIn: keepLoggedIn ? '7d' : '24h',  // keepLoggedIn에 따라 만료 시간 설정
     });
 
     this.logger.log('Generated tokens. RefreshToken:', refreshToken.substring(0, 20) + '...');

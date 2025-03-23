@@ -20,14 +20,15 @@ import {
   BadRequestException,
   ValidationPipe,
   UnauthorizedException,
-  Logger
+  Logger,
+  Req
 } from '@nestjs/common';
 import { MembersService } from './members.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { MemberStatus } from '@common/enums';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
-import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto, UpdatePasswordDto } from './dto';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto, UpdatePasswordDto, MemberProfileDto } from './dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -37,14 +38,16 @@ export class MembersController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '현재 로그인한 사용자의 프로필 정보 조회' })
   @ApiResponse({ 
-    status: HttpStatus.OK, 
-    description: '내 정보 조회 성공', 
-    type: MemberResponseDto 
+    status: 200, 
+    description: '프로필 정보 조회 성공',
+    type: MemberProfileDto 
   })
-  async getProfile(@Request() req) {
-    return this.membersService.findOneByUuid(req.user.uuid);
+  @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
+  async getMyProfile(@Req() req): Promise<MemberProfileDto> {
+    return this.membersService.getMemberProfile(req.user.uuid);
   }
 
   /**
@@ -257,6 +260,26 @@ export class MembersController {
       updatePasswordDto.currentPassword, 
       updatePasswordDto.newPassword
     );
+  }
+
+  /**
+   * members.controller.ts 에서 사용하는 메서드
+   * 닉네임 변경
+   */
+  @Put('me/nickname')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '닉네임 변경' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '닉네임 변경 성공', 
+    type: MemberResponseDto 
+  })
+  async updateNickname(
+    @Request() req,
+    @Body('nickname') nickname: string
+  ): Promise<MemberResponseDto> {
+    const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
+    return this.membersService.updateNickname(member, nickname);
   }
 
 } 
