@@ -29,6 +29,7 @@ import { ApiTags, ApiHeader, ApiOperation, ApiResponse, ApiCookieAuth, ApiBearer
 import { ClientType, AuthProvider,} from '@common/enums';
 import { MembersService } from '@members/members.service';
 import { OptionalJwtAuthGuard } from '@auth/guards/optional-jwt-auth.guard';
+import { AUTH_ERROR_MESSAGES } from '@auth/constants/auth.error-messages';
 
 /**
  * 인증 관련 요청 처리 컨트롤러
@@ -173,13 +174,13 @@ export class AuthController {
   }
 
   /**
-   * 액세스 토큰 재발급
+   * 액세스 토큰과 리프레시 토큰 재발급
    * @param authHeader Authorization 헤더
    * @param clientType 클라이언트 타입
    * @param cookieToken 쿠키의 리프레시 토큰
    */
   @Post('refresh')
-  @ApiOperation({ summary: '액세스 토큰 재발급' })
+  @ApiOperation({ summary: '액세스 토큰과 리프레시 토큰 재발급' })
   @ApiResponse({ status: 200, description: '토큰 재발급 성공' })
   @ApiResponse({ status: 401, description: '유효하지 않은 리프레시 토큰' })
   @ApiHeader({
@@ -198,11 +199,6 @@ export class AuthController {
     @Headers('X-Client-Type') clientType: ClientType,
     @Cookies('refresh_token') cookieToken: string,
   ) {
-    this.logger.log('---------from auth controller: async refresh-----------------');
-    this.logger.log('authHeader:', authHeader);
-    this.logger.log('clientType:', clientType);
-    this.logger.log('cookieToken:', cookieToken);
-    this.logger.log('-------------------------------------------------------------');
     let refreshToken = cookieToken;
     
     if (!refreshToken && authHeader) {
@@ -213,10 +209,45 @@ export class AuthController {
     }
 
     if (!refreshToken) {
-      throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.REFRESH_TOKEN.REQUIRED);
     }
 
     return this.authService.refreshAccessToken(refreshToken, clientType);
+  }
+
+  /**
+   * 액세스 토큰만 재발급
+   * @param authHeader Authorization 헤더
+   * @param cookieToken 쿠키의 리프레시 토큰
+   */
+  @Post('access-token')
+  @ApiOperation({ summary: '액세스 토큰만 재발급' })
+  @ApiResponse({ status: 200, description: '액세스 토큰 재발급 성공' })
+  @ApiResponse({ status: 401, description: '유효하지 않은 리프레시 토큰' })
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'Bearer <refresh_token> 형식으로 전송 (모바일)',
+    required: false,
+  })
+  @ApiCookieAuth('refresh_token')
+  async refreshAccessTokenOnly(
+    @Headers('Authorization') authHeader: string,
+    @Cookies('refresh_token') cookieToken: string,
+  ) {
+    let refreshToken = cookieToken;
+    
+    if (!refreshToken && authHeader) {
+      const [bearer, token] = authHeader.split(' ');
+      if (bearer === 'Bearer' && token) {
+        refreshToken = token;
+      }
+    }
+
+    if (!refreshToken) {
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.REFRESH_TOKEN.REQUIRED);
+    }
+
+    return this.authService.refreshAccessTokenOnly(refreshToken);
   }
 
   /**
@@ -272,27 +303,5 @@ export class AuthController {
   async logoutAll(@Req() req) {
     await this.authService.logoutAll(req.user.uuid);
     return { message: '모든 디바이스에서 로그아웃되었습니다.' };
-  }
-
-  /**
-   * 액세스 토큰 발급
-   * @param refresh_token 리프레시 토큰
-   * @param clientType 클라이언트 타입
-   */
-  @Post('access-token')
-  async getAccessToken(
-    @Cookies('refresh_token') refresh_token: string,
-    @Query('clientType') clientType: ClientType = ClientType.WEB
-  ) {
-    this.logger.log(" access-token 발급 요청 받음")
-    this.logger.log("refresh_token: ", refresh_token)
-
-    if (!refresh_token) {
-      throw new UnauthorizedException('유효한 리프레시 토큰이 필요합니다.');
-    }
-
-    const tokens = await this.authService.refreshAccessToken(refresh_token, clientType);
-    this.logger.log("tokens: ", tokens)
-    return tokens;
   }
 }

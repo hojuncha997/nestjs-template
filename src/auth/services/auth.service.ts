@@ -1,5 +1,6 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -9,8 +10,9 @@ import { MembersService } from '@members/members.service';
 import { Member } from '@members/entities/member.entity';
 import { SocialLoginDto } from '@auth/dto';
 import { EmailUtil } from '@common/utils/email-util.util';
-import { AuthUser, JwtPayload } from '../interfaces/auth.interface';
+import { AuthMember, JwtPayload } from '../interfaces/auth.interface';
 import { RefreshTokenExpiredException, InvalidRefreshTokenException } from '../exceptions/auth.exception';
+import { AUTH_ERROR_MESSAGES } from '../constants/auth.error-messages';
 
 /**
  * 인증 관련 기능 처리 서비스
@@ -33,9 +35,8 @@ export class AuthService {
    * @return 액세스 토큰과 리프레시 토큰 포함한 로그인 결과
    */
   async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
-
     this.logger.log('member from localLogin:', member);
-    const user: AuthUser = {
+    const authMember: AuthMember = {
       id: member.id,
       uuid: member.uuid,
       email: member.email,
@@ -50,42 +51,32 @@ export class AuthService {
       tokenVersion: member.tokenVersion || 0,
     };
 
-    this.logger.log('user from localLogin:', user);
+    this.logger.log('authMember from localLogin:', authMember);
 
-    const tokens = await this.login(user, clientType, keepLoggedIn);
+    const tokens = await this.login(authMember, clientType, keepLoggedIn);
     
     return tokens;
   }
 
-  // private setRefreshTokenCookie(response: Response, token: string): void {
-  //   response.cookie('refresh_token', token, {
-  //     httpOnly: true,
-  //     secure: true,
-  //     sameSite: 'lax',
-  //     path: '/',
-  //     maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
-  //   });
-  // }
-
   /**
-   * 사용자 로그인 처리 및 토큰 생성
-   * @param user 인증된 사용자 정보
+   * 회원 로그인 처리 및 토큰 생성
+   * @param member 인증된 회원 정보
    * @param clientType 클라이언트 타입
    * @param keepLoggedIn 로그인 상태 유지 여부
    * @return 생성된 액세스 토큰과 리프레시 토큰
    * @private
    */
-  private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
+  private async login(member: AuthMember, clientType: ClientType, keepLoggedIn:boolean) {
     this.logger.log('authService login 호출됨');
     
     const payload: JwtPayload = { 
-      sub: user.uuid,
-      role: user.role,
-      tokenVersion: user.tokenVersion,
+      sub: member.uuid,
+      role: member.role,
+      tokenVersion: member.tokenVersion,
       keepLoggedIn: keepLoggedIn,
     };
     
-    this.logger.log('Login attempt for user:', { id: user.id, uuid: user.uuid });
+    this.logger.log('Login attempt for member:', { id: member.id, uuid: member.uuid });
     
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
@@ -102,7 +93,7 @@ export class AuthService {
     this.logger.log('Generated tokens. RefreshToken:', refreshToken.substring(0, 20) + '...');
     
     try {
-      await this.authRepository.saveRefreshToken(user.id, refreshToken, keepLoggedIn);
+      await this.authRepository.saveRefreshToken(member.id, refreshToken, keepLoggedIn);
       this.logger.log('Refresh token saved successfully');
     } catch (error) {
       this.logger.error('Error saving refresh token:', error);
@@ -114,6 +105,46 @@ export class AuthService {
       refresh_token: refreshToken,
       keepLoggedIn: keepLoggedIn,
     };
+  }
+
+  /**
+   * 리프레시 토큰으로 새로운 액세스 토큰만 발급
+   * @param refreshToken 유효한 리프레시 토큰
+   * @throws InvalidRefreshTokenException 유효하지 않은 리프레시 토큰
+   * @throws UnauthorizedException 토큰 소유권 불일치
+   * @return 새로운 액세스 토큰
+   */
+  async refreshAccessTokenOnly(refreshToken: string): Promise<{ access_token: string }> {
+    this.logger.log('Refresh token received for access token only refresh:', refreshToken);
+    
+    // 토큰 검증
+    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
+    this.logger.log('Token verified:', payload);
+    
+    // DB에서 리프레시 토큰 조회
+    const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
+    this.logger.log('Token data from DB:', tokenData);
+    
+    if (!tokenData || tokenData.revoked) {
+      throw new InvalidRefreshTokenException();
+    }
+
+    // 토큰의 회원 정보와 DB의 회원 정보가 일치하는지 확인
+    if (payload.sub !== tokenData.member.uuid) {
+      throw new UnauthorizedException('Invalid token ownership');
+    }
+
+    // 새 액세스 토큰만 발급
+    const accessToken = await this.jwtService.signAsync({
+      sub: tokenData.member.uuid,
+      role: tokenData.member.role,
+      tokenVersion: tokenData.tokenVersion,
+      keepLoggedIn: tokenData.keepLoggedIn
+    } as JwtPayload, {
+      expiresIn: '15m',
+    });
+
+    return { access_token: accessToken };
   }
 
   /**
@@ -139,13 +170,13 @@ export class AuthService {
       throw new InvalidRefreshTokenException();
     }
 
-    // 토큰의 사용자 정보와 DB의 사용자 정보가 일치하는지 확인
+    // 토큰의 회원 정보와 DB의 회원 정보가 일치하는지 확인
     if (payload.sub !== tokenData.member.uuid) {
       throw new UnauthorizedException('Invalid token ownership');
     }
 
     // 새 토큰 발급 시 tokenData.member의 정보 사용
-    const user: AuthUser = {
+    const authMember: AuthMember = {
       id: tokenData.member.id,
       uuid: tokenData.member.uuid,
       email: EmailUtil.decryptEmail(tokenData.member.email),
@@ -156,19 +187,19 @@ export class AuthService {
       tokenVersion: tokenData.tokenVersion
     };
 
-    return this.login(user, clientType, tokenData.keepLoggedIn);
+    return this.login(authMember, clientType, tokenData.keepLoggedIn);
   }
 
   /**
    * 특정 리프레시 토큰으로 로그아웃
    * @param refreshToken 무효화할 리프레시 토큰
-   * @param userUuid 사용자 UUID
-   * @throws InvalidRefreshTokenException 유효하지 않은 토큰 또는 사용자 불일치
+   * @param memberUuid 회원 UUID
+   * @throws InvalidRefreshTokenException 유효하지 않은 토큰 또는 회원 불일치
    */
-  async logout(refreshToken: string, userUuid: string) {
+  async logout(refreshToken: string, memberUuid: string) {
     const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
     
-    if (!tokenData || tokenData.member.uuid !== userUuid) {
+    if (!tokenData || tokenData.member.uuid !== memberUuid) {
       throw new InvalidRefreshTokenException();
     }
 
@@ -177,14 +208,14 @@ export class AuthService {
   }
 
   /**
-   * 사용자의 모든 디바이스 로그아웃
-   * @param userUuid 사용자 UUID
-   * @throws UnauthorizedException 사용자 미존재
+   * 회원의 모든 디바이스 로그아웃
+   * @param memberUuid 회원 UUID
+   * @throws UnauthorizedException 회원 미존재
    */
-  async logoutAll(userUuid: string) {
-    const member = await this.authRepository.findByUuid(userUuid);
+  async logoutAll(memberUuid: string) {
+    const member = await this.authRepository.findByUuid(memberUuid);
     if (!member) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      throw new UnauthorizedException('회원을 찾을 수 없습니다.');
     }
 
     // MembersService를 통해 토큰 버전 증가
@@ -193,67 +224,61 @@ export class AuthService {
   }
 
   /**
-   * 이메일과 비밀번호로 사용자 검증
-   * @param email 사용자 이메일
-   * @param password 사용자 비밀번호
+   * 이메일과 비밀번호로 회원 검증
+   * @param email 회원 이메일
+   * @param password 회원 비밀번호
+   * @param options 검증 옵션
    * @throws BadRequestException 이메일 또는 비밀번호 누락
-   * @throws UnauthorizedException 인증 실패 또는 계정 잠금
-   * @return 검증된 사용자 정보
+   * @throws UnauthorizedException 인증 실패, 계정 잠금, 소셜 로그인 회원
+   * @return 검증된 회원 정보
    */
-  async validateMember(email: string, password: string): Promise<AuthUser | null> {
-    this.logger.log('validateMember 호출됨');
-    this.logger.log('email:', email);
-    this.logger.log('password:', password);
+  async validateMember(
+    email: string, 
+    password: string, 
+    options: { 
+      returnAuthMember?: boolean;
+      checkSocialLogin?: boolean;
+    } = { returnAuthMember: true, checkSocialLogin: true }
+  ): Promise<AuthMember | Member | null> {
     if (!email || !password) {
-      throw new BadRequestException('이메일과 비밀번호를 모두 입력해주세요.');
+      throw new BadRequestException(AUTH_ERROR_MESSAGES.LOGIN.MISSING_CREDENTIALS);
     }
 
-    // 이메일 해시값으로 사용자 조회
     const hashedEmail = EmailUtil.hashEmail(email);
-    this.logger.log('해시된 이메일:', hashedEmail); // 디버깅 추가
+    const member = await this.membersService.findByHashedEmail(hashedEmail);
     
-    const user = await this.membersService.findByHashedEmail(hashedEmail);
-    this.logger.log('DB 조회 결과 raw:', user); // 디버깅 추가
-    
-    if (!user || !user.password) {
-        throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+    if (!member) {
+      return null;
+    }
+
+    // 소셜 로그인 회원 확인
+    if (options.checkSocialLogin && !member.password) {
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.LOGIN.SOCIAL_LOGIN_REQUIRED);
     }
 
     // 계정 잠금 확인
-    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
-      throw new UnauthorizedException('계정이 잠겼습니다. 잠시 후 다시 시도해주세요.');
+    if (member.lockoutUntil && member.lockoutUntil > new Date()) {
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.LOGIN.ACCOUNT_LOCKED);
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await this.validatePassword(password, member.password);
     if (!isPasswordValid) {
-      this.logger.log('비밀번호 불일치');
       await this.membersService.incrementLoginAttempts(email);
-      throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
-    } else {
-      this.logger.log('비밀번호 일치: ', isPasswordValid);
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.LOGIN.INVALID_CREDENTIALS);
     }
 
-    // 이메일 복호화하여 원본 이메일 획득
-    const decryptedEmail = EmailUtil.decryptEmail(user.email);
-    await this.membersService.resetLoginAttempts(decryptedEmail);
-    
-    const authUser = {
-      id: user.id,
-      uuid: user.uuid,
-      email: decryptedEmail, // 복호화된 이메일 사용
-      nickname: user.nickname,
-      role: user.role || 'USER',
-      preferences: user.preferences || {
-        language: 'ko',
-        timezone: 'Asia/Seoul',
-        theme: 'light'
-      },
-      status: user.status,
-      tokenVersion: user.tokenVersion || 0,
+    await this.membersService.resetLoginAttempts(EmailUtil.decryptEmail(member.email));
+
+    // AuthMember 객체로 변환하여 반환
+    if (options.returnAuthMember) {
+      return this.createAuthMemberFromMember(member);
+    }
+
+    // Member 객체 반환
+    return {
+      ...member,
+      email: EmailUtil.decryptEmail(member.email)
     };
-    
-    this.logger.log('반환되는 AuthUser:', authUser);
-    return authUser;
   }
 
   /**
@@ -330,7 +355,7 @@ export class AuthService {
         socialMember = await this.membersService.createSocialMember(socialLoginDto);
       }
   
-      const user: AuthUser = {
+      const user: AuthMember = {
         id: socialMember.id,
         uuid: socialMember.uuid,
         email: socialMember.email,
@@ -418,36 +443,6 @@ export class AuthService {
   }
 
   /**
-   * 이메일과 비밀번호로 사용자 검증
-   * 소셜 로그인 사용자는 로그인 제한
-   * @param email 사용자 이메일
-   * @param password 사용자 비밀번호
-   * @throws UnauthorizedException 소셜 로그인 사용자의 이메일/비밀번호 로그인 시도
-   * @return 검증된 사용자 정보 또는 null
-   */
-  async validateUser(email: string, password: string): Promise<any> {
-    const hashedEmail = EmailUtil.hashEmail(email);
-    const member = await this.membersService.findByHashedEmail(hashedEmail);
-    this.logger.log('member from validateUser:', member);
-    
-    // 소셜 로그인 사용자인 경우 (비밀번호가 없는 경우)
-    if (member && !member.password) {
-      this.logger.log('소셜 로그인 사용자입니다. 이메일/비밀번호 로그인을 사용할 수 없습니다.');
-      throw new UnauthorizedException('소셜 로그인으로 가입한 계정입니다. 소셜 로그인을 사용해주세요.');
-    }
-    
-    if (member && await this.validatePassword(password, member.password)) {
-      // 이메일 복호화 후 member 객체 반환
-      const decryptedEmail = EmailUtil.decryptEmail(member.email);
-      return {
-        ...member,
-        email: decryptedEmail
-      };
-    }
-    return null;
-  }
-
-  /**
    * 비밀번호 검증
    * @param password 검증할 비밀번호
    * @param hashedPassword 저장된 해시된 비밀번호
@@ -461,5 +456,22 @@ export class AuthService {
     const result = await bcrypt.compare(password, hashedPassword);
     this.logger.log('result from validatePassword:', result);
     return result;
+  }
+
+  private createAuthMemberFromMember(member: Member): AuthMember {
+    return {
+      id: member.id,
+      uuid: member.uuid,
+      email: EmailUtil.decryptEmail(member.email),
+      nickname: member.nickname,
+      role: member.role || 'USER',
+      preferences: member.preferences || {
+        language: 'ko',
+        timezone: 'Asia/Seoul',
+        theme: 'light'
+      },
+      status: member.status,
+      tokenVersion: member.tokenVersion || 0,
+    };
   }
 } 

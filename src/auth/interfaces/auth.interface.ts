@@ -1,26 +1,26 @@
 /**
- * 인증된 사용자 정보
+ * 인증된 회원 정보 인터페이스
  */
-export interface AuthUser {
+export interface AuthMember {
   id: number;
   uuid: string;
   email: string;
   nickname: string;
   role: string;
-  tokenVersion: number;
-  preferences: {
+  preferences?: {
     language: string;
     timezone: string;
     theme: string;
   };
   status: string;
+  tokenVersion: number;
 }
 
 /**
- * JWT 토큰 페이로드
+ * JWT 토큰 페이로드 인터페이스
  */
 export interface JwtPayload {
-  sub: string;    // uuid
+  sub: string;
   role: string;
   tokenVersion: number;
   keepLoggedIn: boolean;

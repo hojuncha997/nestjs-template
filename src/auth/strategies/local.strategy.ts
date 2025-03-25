@@ -20,10 +20,10 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     this.logger.log('LocalStrategy validate - email:', email);
     this.logger.log('LocalStrategy validate - password:', password);
     
-    const user = await this.authService.validateUser(email, password);
-    if (!user) {
+    const member = await this.authService.validateMember(email, password);
+    if (!member) {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
-    return user;
+    return member;
   }
 } 
