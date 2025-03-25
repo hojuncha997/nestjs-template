@@ -9,41 +9,12 @@ import { MembersService } from '@members/members.service';
 import { Member } from '@members/entities/member.entity';
 import { SocialLoginDto } from '@auth/dto';
 import { EmailUtil } from '@common/utils/email-util.util';
+import { AuthUser, JwtPayload } from '../interfaces/auth.interface';
+import { RefreshTokenExpiredException, InvalidRefreshTokenException } from '../exceptions/auth.exception';
 
-export class RefreshTokenExpiredException extends UnauthorizedException {
-  constructor() {
-    super('리프레시 토큰이 만료되었습니다.');
-  }
-}
-
-export class InvalidRefreshTokenException extends UnauthorizedException {
-  constructor() {
-    super('유효하지 않은 리프레시 토큰입니다.');
-  }
-}
-
-interface AuthUser {
-  id: number;
-  uuid: string;
-  email: string;
-  nickname: string;
-  role: string;
-  tokenVersion: number;
-  preferences: {
-    language: string;
-    timezone: string;
-    theme: string;
-  };
-  status: string;
-}
-
-interface JwtPayload {
-  sub: string;    // uuid
-  role: string;
-  tokenVersion: number;
-  keepLoggedIn: boolean;
-}
-
+/**
+ * 인증 관련 기능 처리 서비스
+ */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -53,6 +24,14 @@ export class AuthService {
     private readonly membersService: MembersService,
   ) {}
 
+  /**
+   * 로컬 로그인 처리
+   * @param member 로그인할 회원 정보
+   * @param response Express Response 객체
+   * @param clientType 클라이언트 타입 (웹, 모바일 등)
+   * @param keepLoggedIn 로그인 상태 유지 여부
+   * @return 액세스 토큰과 리프레시 토큰 포함한 로그인 결과
+   */
   async localLogin(member: Member, response: Response, clientType: ClientType, keepLoggedIn: boolean) {
 
     this.logger.log('member from localLogin:', member);
@@ -88,6 +67,14 @@ export class AuthService {
   //   });
   // }
 
+  /**
+   * 사용자 로그인 처리 및 토큰 생성
+   * @param user 인증된 사용자 정보
+   * @param clientType 클라이언트 타입
+   * @param keepLoggedIn 로그인 상태 유지 여부
+   * @return 생성된 액세스 토큰과 리프레시 토큰
+   * @private
+   */
   private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
     this.logger.log('authService login 호출됨');
     
@@ -129,6 +116,14 @@ export class AuthService {
     };
   }
 
+  /**
+   * 리프레시 토큰으로 새로운 액세스 토큰 발급
+   * @param refreshToken 유효한 리프레시 토큰
+   * @param clientType 클라이언트 타입
+   * @throws InvalidRefreshTokenException 유효하지 않은 리프레시 토큰
+   * @throws UnauthorizedException 토큰 소유권 불일치
+   * @return 새로운 액세스 토큰과 리프레시 토큰
+   */
   async refreshAccessToken(refreshToken: string, clientType: ClientType): Promise<any> {
     this.logger.log('Refresh token received:', refreshToken);
     
@@ -164,6 +159,12 @@ export class AuthService {
     return this.login(user, clientType, tokenData.keepLoggedIn);
   }
 
+  /**
+   * 특정 리프레시 토큰으로 로그아웃
+   * @param refreshToken 무효화할 리프레시 토큰
+   * @param userUuid 사용자 UUID
+   * @throws InvalidRefreshTokenException 유효하지 않은 토큰 또는 사용자 불일치
+   */
   async logout(refreshToken: string, userUuid: string) {
     const tokenData = await this.authRepository.findByRefreshToken(refreshToken);
     
@@ -175,6 +176,11 @@ export class AuthService {
     await this.authRepository.revokeRefreshToken(refreshToken);
   }
 
+  /**
+   * 사용자의 모든 디바이스 로그아웃
+   * @param userUuid 사용자 UUID
+   * @throws UnauthorizedException 사용자 미존재
+   */
   async logoutAll(userUuid: string) {
     const member = await this.authRepository.findByUuid(userUuid);
     if (!member) {
@@ -186,6 +192,14 @@ export class AuthService {
     await this.authRepository.revokeAllRefreshTokens(member.id);
   }
 
+  /**
+   * 이메일과 비밀번호로 사용자 검증
+   * @param email 사용자 이메일
+   * @param password 사용자 비밀번호
+   * @throws BadRequestException 이메일 또는 비밀번호 누락
+   * @throws UnauthorizedException 인증 실패 또는 계정 잠금
+   * @return 검증된 사용자 정보
+   */
   async validateMember(email: string, password: string): Promise<AuthUser | null> {
     this.logger.log('validateMember 호출됨');
     this.logger.log('email:', email);
@@ -242,11 +256,21 @@ export class AuthService {
     return authUser;
   }
 
+  /**
+   * UUID로 회원 조회
+   * @param uuid 조회할 회원의 UUID
+   * @return 조회된 회원 정보
+   */
   async findMemberByUuid(uuid: string) {
-    // return this.authRepository.findByUuid(uuid);
     return this.membersService.findOneByUuid(uuid);
   }
 
+  /**
+   * 소셜 로그인 제공자의 인증 URL 생성
+   * @param provider 소셜 로그인 제공자 (예: GOOGLE)
+   * @throws BadRequestException 지원하지 않는 제공자
+   * @return 소셜 로그인 인증 URL
+   */
   async getSocialLoginUrl(provider: AuthProvider): Promise<string> {
     const providerKey = provider.toUpperCase();
     let url = AuthProviderUrl[providerKey];
@@ -280,6 +304,12 @@ export class AuthService {
     return url;
   }
 
+  /**
+   * 소셜 로그인 처리
+   * @param socialLoginDto 소셜 로그인 정보 DTO
+   * @throws ConflictException 이메일 중복
+   * @return 로그인 결과 (액세스 토큰, 리프레시 토큰)
+   */
   async socialLogin(socialLoginDto: SocialLoginDto): Promise<any> {
     try {
       // 1. 소셜 로그인으로 이미 가입했는지 먼저 확인
@@ -318,6 +348,12 @@ export class AuthService {
     }
   }
 
+  /**
+   * Google OAuth2 인증 코드로 액세스 토큰 요청
+   * @param code Google OAuth2 인증 코드
+   * @throws Error Google 토큰 요청 실패
+   * @return Google OAuth2 토큰 응답
+   */
   async getGoogleToken(code: string) {
     
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -344,26 +380,11 @@ export class AuthService {
     return JSON.parse(responseData);
   }
 
-  // async getGoogleToken(code: string) {
-  //   console.log('code from getGoogleToken:', code); // code from getGoogleToken: 4/0AanRRrsr9NgIdU57bWPsXp17pt4I8f4tmsxWhjxDghB50dohPL59Mj1AwAUOoWu8SGz0jA
-  //   // Google OAuth2 토큰 획득 로직
-  //   const response = await fetch('https://oauth2.googleapis.com/token', {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/x-www-form-urlencoded',
-  //     },
-  //     body: new URLSearchParams({
-  //       code,
-  //       client_id: process.env.GOOGLE_CLIENT_ID,
-  //       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-  //       redirect_uri: process.env.GOOGLE_REDIRECT_URI,
-  //       grant_type: 'authorization_code',
-  //     }),
-  //   });
-  //   console.log('response from getGoogleToken@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:', response);
-  //   return response.json();
-  // }
-
+  /**
+   * Google 액세스 토큰으로 사용자 정보 조회
+   * @param accessToken Google 액세스 토큰
+   * @return Google 사용자 프로필 정보
+   */
   async getGoogleUserInfo(accessToken: string) {
     // Google 사용자 정보 획득 로직
     const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -372,6 +393,13 @@ export class AuthService {
     return response.json();
   }
 
+  /**
+   * 소셜 로그인 제공자별 사용자 정보 표준화
+   * @param provider 소셜 로그인 제공자
+   * @param userInfo 제공자로부터 받은 사용자 정보
+   * @throws Error 지원하지 않는 제공자
+   * @return 표준화된 소셜 로그인 DTO
+   */
   standardizeUserInfo(provider: string, userInfo: any): SocialLoginDto {
     switch (provider) {
       case 'google':
@@ -389,6 +417,14 @@ export class AuthService {
     }
   }
 
+  /**
+   * 이메일과 비밀번호로 사용자 검증
+   * 소셜 로그인 사용자는 로그인 제한
+   * @param email 사용자 이메일
+   * @param password 사용자 비밀번호
+   * @throws UnauthorizedException 소셜 로그인 사용자의 이메일/비밀번호 로그인 시도
+   * @return 검증된 사용자 정보 또는 null
+   */
   async validateUser(email: string, password: string): Promise<any> {
     const hashedEmail = EmailUtil.hashEmail(email);
     const member = await this.membersService.findByHashedEmail(hashedEmail);
@@ -411,6 +447,13 @@ export class AuthService {
     return null;
   }
 
+  /**
+   * 비밀번호 검증
+   * @param password 검증할 비밀번호
+   * @param hashedPassword 저장된 해시된 비밀번호
+   * @return 비밀번호 일치 여부
+   * @private
+   */
   private async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
     this.logger.log('validatePassword 호출됨');
     this.logger.log('password:', password ? '존재함' : '없음');

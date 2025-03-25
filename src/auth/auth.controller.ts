@@ -30,272 +30,269 @@ import { ClientType, AuthProvider,} from '@common/enums';
 import { MembersService } from '@members/members.service';
 import { OptionalJwtAuthGuard } from '@auth/guards/optional-jwt-auth.guard';
 
+/**
+ * 인증 관련 요청 처리 컨트롤러
+ * 로컬 로그인, 소셜 로그인, 토큰 관리 등 인증 관련 엔드포인트 제공
+ */
 @ApiTags('auth')
 @Controller('auth')
 @UseInterceptors(AuthResponseInterceptor)
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
- constructor(private authService: AuthService, private membersService: MembersService) {}
+  constructor(
+    private authService: AuthService,
+    private membersService: MembersService
+  ) {}
 
- @Post('/local/login')  // 로컬 로그인 요청
- @UseGuards(LocalAuthGuard) // 로컬 인증 전략 사용
- @ApiOperation({ summary: '로컬 로그인' })
- @ApiResponse({ 
-   status: 200, 
-   description: '로그인 성공. 웹 클라이언트의 경우 refresh_token은 httpOnly 쿠키로 전송됨',
-   schema: {
-     properties: {
-       access_token: { type: 'string' },
-       refresh_token: { 
-         type: 'string',
-         description: '모바일 클라이언트인 경우에만 JSON으로 반환' 
-       }
-     }
-   }
- })
- @ApiResponse({ status: 401, description: '인증 실패' })
- @ApiResponse({ status: 429, description: '로그인 시도 횟수 초과' })
- async login(
-   @Req() req,
-   @Res({ passthrough: true }) response: Response,
-   @Body() loginDto: LocalLoginDto,
- ) {
-  this.logger.log('loginDto!!!!!!!s:', loginDto);
-  this.logger.log('req.user!!!!!!!s:', req.user);
-   return this.authService.localLogin(req.user, response, loginDto.clientType, loginDto.keepLoggedIn);
- }
+  /**
+   * 로컬 로그인 처리
+   * @param req Request 객체
+   * @param response Response 객체
+   * @param loginDto 로그인 요청 데이터
+   */
+  @Post('/local/login')
+  @UseGuards(LocalAuthGuard)
+  @ApiOperation({ summary: '로컬 로그인' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '로그인 성공. 웹 클라이언트의 경우 refresh_token은 httpOnly 쿠키로 전송',
+    schema: {
+      properties: {
+        access_token: { type: 'string' },
+        refresh_token: { 
+          type: 'string',
+          description: '모바일 클라이언트인 경우에만 JSON으로 반환' 
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: '인증 실패' })
+  @ApiResponse({ status: 429, description: '로그인 시도 횟수 초과' })
+  async login(
+    @Req() req,
+    @Res({ passthrough: true }) response: Response,
+    @Body() loginDto: LocalLoginDto,
+  ) {
+    this.logger.log('loginDto!!!!!!!s:', loginDto);
+    this.logger.log('req.user!!!!!!!s:', req.user);
+    return this.authService.localLogin(req.user, response, loginDto.clientType, loginDto.keepLoggedIn);
+  }
 
- @Get('/social/:provider/url')
- @ApiOperation({ summary: '소셜 로그인 URL 생성' })
- @ApiResponse({ status: HttpStatus.OK, description: '소셜 로그인 URL 생성 성공' })
- @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: '소셜 인증 실패' })
- async getSocialLoginUrl(@Param('provider') provider: string): Promise<{ url: string }> {
-   if (!Object.values(AuthProvider).includes(provider as AuthProvider)) {
-     throw new BadRequestException(`Invalid provider: ${provider}`);
-   }
-   const url = await this.authService.getSocialLoginUrl(provider as AuthProvider);
-   return { url };
- }
+  /**
+   * 소셜 로그인 URL 생성
+   * @param provider 소셜 로그인 제공자
+   */
+  @Get('/social/:provider/url')
+  @ApiOperation({ summary: '소셜 로그인 URL 생성' })
+  @ApiResponse({ status: HttpStatus.OK, description: '소셜 로그인 URL 생성 성공' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: '소셜 인증 실패' })
+  async getSocialLoginUrl(@Param('provider') provider: string): Promise<{ url: string }> {
+    if (!Object.values(AuthProvider).includes(provider as AuthProvider)) {
+      throw new BadRequestException(`Invalid provider: ${provider}`);
+    }
+    const url = await this.authService.getSocialLoginUrl(provider as AuthProvider);
+    return { url };
+  }
 
+  /**
+   * 소셜 로그인 콜백 처리
+   * @param provider 소셜 로그인 제공자
+   * @param code 인증 코드
+   * @param clientType 클라이언트 타입
+   * @param res Response 객체
+   */
+  @Get('/social/:provider/callback')
+  @ApiOperation({ summary: '소셜 로그인 콜백 처리' })
+  async socialCallback(
+    @Param('provider') provider: string,
+    @Query('code') code: string,
+    @Query('clientType') clientType: ClientType = ClientType.WEB,
+    @Res() res: Response
+  ) {
+    try {
+      const tokenResponse = await this.authService.getGoogleToken(code);
+      const userInfo = await this.authService.getGoogleUserInfo(tokenResponse.access_token);
+      
+      const socialLoginDto = this.authService.standardizeUserInfo(provider, userInfo);
+      socialLoginDto.clientType = clientType;
+      socialLoginDto.keepLoggedIn = true;
 
- // 소셜 로그인 콜백 처리
- @Get('/social/:provider/callback')
- @ApiOperation({ summary: '소셜 로그인 콜백 처리' })
- async socialCallback(
-  //  @Param('provider') provider: AuthProvider,
-  @Param('provider') provider: string,
-   @Query('code') code: string,
-   @Query('clientType') clientType: ClientType = ClientType.WEB,
-   @Res() res: Response
- ) {
-   try {
-     // 1. 소셜 로그인 토큰 획득
-     const tokenResponse = await this.authService.getGoogleToken(code);
-     
-     // 2. 사용자 정보 획득
-     const userInfo = await this.authService.getGoogleUserInfo(tokenResponse.access_token);
-     
-     // 3. 표준화된 사용자 정보로 변환 및 로그인/회원가입 처리
-     const socialLoginDto = this.authService.standardizeUserInfo(provider, userInfo);
-     socialLoginDto.clientType = clientType;
-     socialLoginDto.keepLoggedIn = true; // 소셜 로그인은 기본적으로 로그인 유지
+      const tokens = await this.authService.socialLogin(socialLoginDto);
 
-     const tokens = await this.authService.socialLogin(socialLoginDto);
+      const successUrl = new URL('/auth/social/callback', process.env.CLIENT_URL);
+      successUrl.searchParams.set('provider', provider);
+      successUrl.searchParams.set('status', 'success');
 
-     // 4. 클라이언트 타입에 따른 처리
-     const successUrl = new URL('/auth/social/callback', process.env.CLIENT_URL);
-     successUrl.searchParams.set('provider', provider);
-     successUrl.searchParams.set('status', 'success');
-
-     if (clientType === ClientType.WEB) {
-       // 데스크톱: httpOnly 쿠키에 리프레시 토큰 설정
-       res.cookie('refresh_token', tokens.refresh_token, {
-         httpOnly: true,
-         secure: true,
-         sameSite: 'lax',
-         path: '/',
-         maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
-       });
-       
-       return res.redirect(successUrl.toString());
-     } else {
-       // 모바일: JSON 응답에 리프레시 토큰 포함
-       return res.json({
-         redirect_url: successUrl.toString(),
-         refresh_token: tokens.refresh_token
-       });
-     }
-
-   } catch (error) {
-    //  console.error('Social callback error:', error);
-    //  const errorUrl = new URL('/auth/error', process.env.FRONTEND_URL);
-    //  errorUrl.searchParams.set('message', '소셜 로그인 실패');
-    //  return res.redirect(errorUrl.toString());
-    const errorCode = error instanceof ConflictException ? 'EMAIL_EXISTS' : 'LOGIN_FAILED';
-    const errorUrl = new URL('/auth/error', process.env.CLIENT_URL);
-    errorUrl.searchParams.set('code', errorCode);
-    return res.redirect(errorUrl.toString());
-   }
- }
-
- @Post('social/login')
- @ApiOperation({ summary: '소셜 로그인' })
- @ApiResponse({ 
-   status: HttpStatus.OK, 
-   description: '소셜 로그인 성공',
-   schema: {
-     properties: {
-       access_token: { type: 'string' },
-       refresh_token: { type: 'string' }
-     }
-   }
- })
- @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: '소셜 인증 실패' })
- async socialLogin(
-   @Body() socialLoginDto: SocialLoginDto,
-   @Res({ passthrough: true }) response: Response
- ) {
-   return this.authService.socialLogin(socialLoginDto);
- }
-
-
-
-@Post('refresh')
-@ApiOperation({ summary: '액세스 토큰 재발급' })
-@ApiResponse({ status: 200, description: '토큰 재발급 성공' })
-@ApiResponse({ status: 401, description: '유효하지 않은 리프레시 토큰' })
-@ApiHeader({
-  name: 'Authorization',
-  description: 'Bearer <refresh_token> 형식으로 전송 (모바일)',
-  required: false,
-})
-@ApiHeader({
-  name: 'X-Client-Type',
-  description: '클라이언트 타입',
-  required: false,
-})
-@ApiCookieAuth('refresh_token') 
-async refresh(
-  @Headers('Authorization') authHeader: string,
-  // 커스텀 헤더. 리프레시 시 직접 헤더에 넣어서 보내줘야 함.
-  @Headers('X-Client-Type') clientType: ClientType,
-  @Cookies('refresh_token') cookieToken: string,
-) {
-
-  this.logger.log('---------from auth controller: async refresh-----------------');
-  this.logger.log('authHeader:', authHeader);
-  this.logger.log('clientType:', clientType);
-  this.logger.log('cookieToken:', cookieToken);
-  this.logger.log('-------------------------------------------------------------');
-  let refreshToken = cookieToken;
-  
-  if (!refreshToken && authHeader) {// 쿠키에 없으면 헤더에서 찾음
-    const [bearer, token] = authHeader.split(' ');
-    if (bearer === 'Bearer' && token) {
-      refreshToken = token;
+      if (clientType === ClientType.WEB) {
+        res.cookie('refresh_token', tokens.refresh_token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        
+        return res.redirect(successUrl.toString());
+      } else {
+        return res.json({
+          redirect_url: successUrl.toString(),
+          refresh_token: tokens.refresh_token
+        });
+      }
+    } catch (error) {
+      const errorCode = error instanceof ConflictException ? 'EMAIL_EXISTS' : 'LOGIN_FAILED';
+      const errorUrl = new URL('/auth/error', process.env.CLIENT_URL);
+      errorUrl.searchParams.set('code', errorCode);
+      return res.redirect(errorUrl.toString());
     }
   }
 
-  if (!refreshToken) {
-    throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+  /**
+   * 소셜 로그인 처리
+   * @param socialLoginDto 소셜 로그인 데이터
+   * @param response Response 객체
+   */
+  @Post('social/login')
+  @ApiOperation({ summary: '소셜 로그인' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '소셜 로그인 성공',
+    schema: {
+      properties: {
+        access_token: { type: 'string' },
+        refresh_token: { type: 'string' }
+      }
+    }
+  })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: '소셜 인증 실패' })
+  async socialLogin(
+    @Body() socialLoginDto: SocialLoginDto,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.authService.socialLogin(socialLoginDto);
   }
 
-  const result = await this.authService.refreshAccessToken(refreshToken, clientType);
-  return result;
-}
+  /**
+   * 액세스 토큰 재발급
+   * @param authHeader Authorization 헤더
+   * @param clientType 클라이언트 타입
+   * @param cookieToken 쿠키의 리프레시 토큰
+   */
+  @Post('refresh')
+  @ApiOperation({ summary: '액세스 토큰 재발급' })
+  @ApiResponse({ status: 200, description: '토큰 재발급 성공' })
+  @ApiResponse({ status: 401, description: '유효하지 않은 리프레시 토큰' })
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'Bearer <refresh_token> 형식으로 전송 (모바일)',
+    required: false,
+  })
+  @ApiHeader({
+    name: 'X-Client-Type',
+    description: '클라이언트 타입',
+    required: false,
+  })
+  @ApiCookieAuth('refresh_token')
+  async refresh(
+    @Headers('Authorization') authHeader: string,
+    @Headers('X-Client-Type') clientType: ClientType,
+    @Cookies('refresh_token') cookieToken: string,
+  ) {
+    this.logger.log('---------from auth controller: async refresh-----------------');
+    this.logger.log('authHeader:', authHeader);
+    this.logger.log('clientType:', clientType);
+    this.logger.log('cookieToken:', cookieToken);
+    this.logger.log('-------------------------------------------------------------');
+    let refreshToken = cookieToken;
+    
+    if (!refreshToken && authHeader) {
+      const [bearer, token] = authHeader.split(' ');
+      if (bearer === 'Bearer' && token) {
+        refreshToken = token;
+      }
+    }
 
- @Post('logout')
-//  @UseGuards(JwtAuthGuard)
- @UseGuards(OptionalJwtAuthGuard)
- @ApiOperation({ summary: '로그아웃' })
- @ApiResponse({ status: 200, description: '로그아웃 성공' })
- @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
- @ApiBearerAuth()
- @ApiCookieAuth('refresh_token')
- async logout(
-   @Req() req,
-   @Cookies('refresh_token') cookieToken: string,
-   @Body('refresh_token') bodyToken: string,
-   @Res({ passthrough: true }) res: Response,
- ) {
-   try {
-     // 쿠키나 바디에서 토큰 확인
-     const refreshToken = cookieToken || bodyToken;
-     const userUuid = req.user?.uuid;
+    if (!refreshToken) {
+      throw new UnauthorizedException('리프레시 토큰이 필요합니다.');
+    }
 
-     // 토큰이 있는 경우만 서비스 호출 시도
-     if (refreshToken && userUuid) {
-       const result = await this.authService.logout(refreshToken, userUuid);
-       this.logger.log('토큰 파기 결과:', result);
-     }
-   } catch (error) {
-     // 에러 발생 시 로그 기록
-     this.logger.error('토큰 파기 실패:', error);
-     // 에러가 발생해도 로그아웃은 계속 진행
-   } finally {
-     // 결과와 상관없이 항상 쿠키는 삭제
-     res.clearCookie('refresh_token', {
-       httpOnly: true,
-       secure: process.env.NODE_ENV === 'production',
-       sameSite: 'lax'
-     });
-   }
+    return this.authService.refreshAccessToken(refreshToken, clientType);
+  }
 
-   // 토큰 파기 성공 여부와 관계없이 로그아웃 성공 응답
-   const logoutResponse = { message: '로그아웃되었습니다.' };
-   this.logger.log('logoutResponse:', logoutResponse);
-   return logoutResponse;
- }
+  /**
+   * 로그아웃 처리
+   * @param req Request 객체
+   * @param cookieToken 쿠키의 리프레시 토큰
+   * @param bodyToken 요청 본문의 리프레시 토큰
+   * @param res Response 객체
+   */
+  @Post('logout')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: '로그아웃' })
+  @ApiResponse({ status: 200, description: '로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
+  @ApiBearerAuth()
+  @ApiCookieAuth('refresh_token')
+  async logout(
+    @Req() req,
+    @Cookies('refresh_token') cookieToken: string,
+    @Body('refresh_token') bodyToken: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    try {
+      const refreshToken = cookieToken || bodyToken;
+      const userUuid = req.user?.uuid;
 
- @Post('logout/all')
- @UseGuards(JwtAuthGuard)
- @ApiOperation({ summary: '모든 디바이스에서 로그아웃' })
- @ApiResponse({ status: 200, description: '모든 디바이스 로그아웃 성공' })
- @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
- @ApiBearerAuth()
- async logoutAll(@Req() req) {
-   await this.authService.logoutAll(req.user.uuid);
-   return { message: '모든 디바이스에서 로그아웃되었습니다.' };
- }
+      if (refreshToken && userUuid) {
+        await this.authService.logout(refreshToken, userUuid);
+      }
+    } catch (error) {
+      this.logger.error('토큰 파기 실패:', error);
+    } finally {
+      res.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+    }
 
- // 리프레시 토큰으로 액세스 토큰 발급
- @Post('access-token')
- async getAccessToken(
-  //  @Headers('Authorization') authHeader: string,
-  //  @Headers('refresh_token') refresh_token: string,
-  //  @Req() request: Request,
-  @Cookies('refresh_token') refresh_token: string,
-   @Query('clientType') clientType: ClientType = ClientType.WEB
- ) {
-  this.logger.log(" access-token 발급 요청 받음")
-  this.logger.log("refresh_token: ", refresh_token)
+    return { message: '로그아웃되었습니다.' };
+  }
 
-  
-   if (!refresh_token) {
-     throw new UnauthorizedException('유효한 리프레시 토큰이 필요합니다.');
-   }
+  /**
+   * 모든 디바이스 로그아웃
+   * @param req Request 객체
+   */
+  @Post('logout/all')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '모든 디바이스에서 로그아웃' })
+  @ApiResponse({ status: 200, description: '모든 디바이스 로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
+  @ApiBearerAuth()
+  async logoutAll(@Req() req) {
+    await this.authService.logoutAll(req.user.uuid);
+    return { message: '모든 디바이스에서 로그아웃되었습니다.' };
+  }
 
-  const tokens = await this.authService.refreshAccessToken(refresh_token, clientType);
-  this.logger.log("tokens: ", tokens)
-  //  return {
-  //   refresh_token: tokens.refresh_token,
-  //   access_token: tokens.access_token
-  //  };
+  /**
+   * 액세스 토큰 발급
+   * @param refresh_token 리프레시 토큰
+   * @param clientType 클라이언트 타입
+   */
+  @Post('access-token')
+  async getAccessToken(
+    @Cookies('refresh_token') refresh_token: string,
+    @Query('clientType') clientType: ClientType = ClientType.WEB
+  ) {
+    this.logger.log(" access-token 발급 요청 받음")
+    this.logger.log("refresh_token: ", refresh_token)
 
-  return tokens;
- }
+    if (!refresh_token) {
+      throw new UnauthorizedException('유효한 리프레시 토큰이 필요합니다.');
+    }
 
-
-
-  // // 리프레시 토큰으로 액세스 토큰 발급
-  // @Post('access-token')
-  // async getAccessToken(
-  //   @Body('refresh_token') refreshToken: string,
-  //   @Query('clientType') clientType: ClientType = ClientType.WEB
-  // ) {
-  //   const tokens = await this.authService.refreshAccessToken(refreshToken, clientType);
-  //   return {
-  //     access_token: tokens.access_token
-  //   };
-  // }
+    const tokens = await this.authService.refreshAccessToken(refresh_token, clientType);
+    this.logger.log("tokens: ", tokens)
+    return tokens;
+  }
 }
