@@ -90,9 +90,6 @@ export class AuthService {
 
   private async login(user: AuthUser, clientType: ClientType, keepLoggedIn:boolean) {
     this.logger.log('authService login 호출됨');
-
-    this.logger.log('user.email from auth.service.login:',user.email);
-    this.logger.log('user.nickname from auth.service.login:',user.nickname);
     
     const payload: JwtPayload = { 
       sub: user.uuid,
