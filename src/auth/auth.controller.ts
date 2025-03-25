@@ -69,7 +69,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: '인증 실패' })
   @ApiResponse({ status: 429, description: '로그인 시도 횟수 초과' })
-  async login(
+  async localLogin(
     @Req() req,
     @Res({ passthrough: true }) response: Response,
     @Body() loginDto: LocalLoginDto,
@@ -114,7 +114,7 @@ export class AuthController {
       const tokenResponse = await this.authService.getGoogleToken(code);
       const userInfo = await this.authService.getGoogleUserInfo(tokenResponse.access_token);
       
-      const socialLoginDto = this.authService.standardizeUserInfo(provider, userInfo);
+      const socialLoginDto = this.authService.standardizeSocialUserInfo(provider, userInfo);
       socialLoginDto.clientType = clientType;
       socialLoginDto.keepLoggedIn = true;
 

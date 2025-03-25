@@ -53,7 +53,7 @@ export class AuthService {
 
     this.logger.log('authMember from localLogin:', authMember);
 
-    const tokens = await this.login(authMember, clientType, keepLoggedIn);
+    const tokens = await this.createTokens(authMember, clientType, keepLoggedIn);
     
     return tokens;
   }
@@ -66,8 +66,8 @@ export class AuthService {
    * @return 생성된 액세스 토큰과 리프레시 토큰
    * @private
    */
-  private async login(member: AuthMember, clientType: ClientType, keepLoggedIn:boolean) {
-    this.logger.log('authService login 호출됨');
+  private async createTokens(member: AuthMember, clientType: ClientType, keepLoggedIn:boolean) {
+    this.logger.log('authService createTokens 호출됨');
     
     const payload: JwtPayload = { 
       sub: member.uuid,
@@ -187,7 +187,7 @@ export class AuthService {
       tokenVersion: tokenData.tokenVersion
     };
 
-    return this.login(authMember, clientType, tokenData.keepLoggedIn);
+    return this.createTokens(authMember, clientType, tokenData.keepLoggedIn);
   }
 
   /**
@@ -366,7 +366,7 @@ export class AuthService {
         tokenVersion: socialMember.tokenVersion
       };
 
-      return this.login(user, socialLoginDto.clientType, socialLoginDto.keepLoggedIn);
+      return this.createTokens(user, socialLoginDto.clientType, socialLoginDto.keepLoggedIn);
     } catch (error) {
       this.logger.error('Social login error:', error);
       throw error;
@@ -425,7 +425,7 @@ export class AuthService {
    * @throws Error 지원하지 않는 제공자
    * @return 표준화된 소셜 로그인 DTO
    */
-  standardizeUserInfo(provider: string, userInfo: any): SocialLoginDto {
+  standardizeSocialUserInfo(provider: string, userInfo: any): SocialLoginDto {
     switch (provider) {
       case 'google':
         return {
