@@ -176,7 +176,19 @@ export class MembersRepository {
         emailVerified: true,
         marketingAgreed: true,
         tokenVersion: true,
-        password: true,
+        profileImage: true,
+        preferences: {
+          language: true,
+          timezone: true,
+          theme: true
+        },
+        notificationSettings: {
+          email: true,
+          push: true,
+          sms: true,
+          marketing: true,
+          inApp: true
+        },
         levelInfo: {
           level: true,
           experience: true
@@ -186,6 +198,19 @@ export class MembersRepository {
           purchase: true,
           reward: true
         }
+      }
+    });
+  }
+
+  // 비밀번호 변경을 위한 멤버 조회
+  async findOneWithPassword(uuid: string): Promise<Member | null> {
+    return this.memberRepository.findOne({ 
+      where: { uuid },
+      select: {
+        id: true,
+        uuid: true,
+        password: true,
+        tokenVersion: true
       }
     });
   }

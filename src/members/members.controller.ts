@@ -28,7 +28,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { MemberStatus } from '@common/enums';
 import { EmailVerificationResponse } from './types/email-verification-response.type';
-import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto, UpdatePasswordDto, MemberProfileDto } from './dto';
+import { CreateMemberDto,  UpdateMemberDto, MemberResponseDto, CreateSocialMemberDto, WithdrawRequestDto, ResetPasswordDto, PasswordResetTokenResponseDto, UpdatePasswordDto, MemberProfileDto, UpdateProfileImageDto } from './dto';
 
 @ApiTags('members')
 @Controller('members')
@@ -238,32 +238,34 @@ export class MembersController {
   /**
    * 사용자가 로그인 이후 비밀번호 업데이트
    */
-  // @Put('update-password') 명칭을 이렇게 하면 상단의 update로 인식되어 오류 발생.
   @Put('me/update-password')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '비밀번호 업데이트' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: '비밀번호 업데이트 성공', 
+    description: '비밀번호 업데이트 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        success: {
+          type: 'boolean',
+          description: '비밀번호 변경 성공 여부'
+        }
+      }
+    }
   })
   async updatePassword(
     @Request() req,
     @Body() updatePasswordDto: UpdatePasswordDto
-  ) {
-    this.logger.log('req.user: ', req.user);
-    this.logger.log('updatePasswordDto: ', updatePasswordDto);
-
-    const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
-    
+  ): Promise<{ success: boolean }> {
     return this.membersService.updatePassword(
-      member,  // 완전한 Member 엔티티
+      req.member,
       updatePasswordDto.currentPassword, 
       updatePasswordDto.newPassword
     );
   }
 
   /**
-   * members.controller.ts 에서 사용하는 메서드
    * 닉네임 변경
    */
   @Put('me/nickname')
@@ -271,15 +273,58 @@ export class MembersController {
   @ApiOperation({ summary: '닉네임 변경' })
   @ApiResponse({ 
     status: HttpStatus.OK, 
-    description: '닉네임 변경 성공', 
-    type: MemberResponseDto 
+    description: '닉네임 변경 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        nickname: {
+          type: 'string',
+          description: '변경된 닉네임'
+        }
+      }
+    }
   })
   async updateNickname(
     @Request() req,
     @Body('nickname') nickname: string
-  ): Promise<MemberResponseDto> {
-    const member = await this.membersService.findOneByUuidAsEntity(req.user.uuid);
-    return this.membersService.updateNickname(member, nickname);
+  ): Promise<{ nickname: string }> {
+    const updatedNickname = await this.membersService.updateNickname(req.member, nickname);
+    return { nickname: updatedNickname };
+  }
+
+  /**
+   * 프로필 이미지 업데이트
+   */
+  @Put('me/profile-image')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '프로필 이미지 업데이트' })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: '프로필 이미지 업데이트 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        profileImage: {
+          type: 'string',
+          description: '업데이트된 프로필 이미지 URL'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: '인증되지 않은 요청' })
+  @ApiResponse({ status: 400, description: '잘못된 요청 (이미지 크기 초과, 지원되지 않는 형식)' })
+  async updateProfileImage(
+    @Request() req,
+    @Body() updateProfileImageDto: UpdateProfileImageDto
+  ): Promise<{ profileImage: string }> {
+    const profileImage = await this.membersService.updateProfileImage(
+      req.member,
+      updateProfileImageDto.profileImage,
+      updateProfileImageDto.size,
+      updateProfileImageDto.mimeType
+    );
+    return { profileImage };
   }
 
 } 

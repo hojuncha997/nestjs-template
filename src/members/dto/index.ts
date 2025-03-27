@@ -7,3 +7,4 @@ export * from './reset-password.dto';
 export * from './password-reset-token-response.dto';
 export * from './update-password.dto';
 export * from './member-profile.dto';
+export * from './update-profile-image.dto';

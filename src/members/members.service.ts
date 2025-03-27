@@ -19,6 +19,7 @@ import { PasswordResetTokenResponseDto } from './dto/password-reset-token-respon
 import { WithdrawnMember } from './entities/withdrawn-member.entity';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
 import { MemberProfileDto } from './dto/member-profile.dto';
+import { FILE_CONSTANTS } from '@common/constants/file.constants';
 // import { AuthService } from '@auth/services/auth.service';
 @Injectable()
 export class MembersService {
@@ -532,32 +533,37 @@ export class MembersService {
     return member;  // Entity 그대로 반환
   }
 
-  async updatePassword(member: Member, currentPassword: string, newPassword: string): Promise<MemberResponseDto> {
+  async updatePassword(
+    member: Member, 
+    currentPassword: string, 
+    newPassword: string
+  ): Promise<{ success: boolean }> {
+    // 현재 비밀번호 확인을 위해 비밀번호가 포함된 멤버 정보 조회
+    const memberWithPassword = await this.membersRepository.findOneWithPassword(member.uuid);
+    if (!memberWithPassword) {
+      throw new NotFoundException('회원을 찾을 수 없습니다.');
+    }
+
     // 현재 비밀번호 확인
-    const isPasswordValid = await bcrypt.compare(currentPassword, member.password);
+    const isPasswordValid = await bcrypt.compare(currentPassword, memberWithPassword.password);
     if (!isPasswordValid) {
       throw new BadRequestException('현재 비밀번호가 일치하지 않습니다.');
     }
 
     // 새 비밀번호 해시화 및 업데이트
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    const updatedMember = await this.membersRepository.updateMember(member.uuid, {
+    await this.membersRepository.updateMember(member.uuid, {
       password: hashedPassword,
       passwordChangedAt: new Date(),
-      // tokenVersion: member.tokenVersion + 1  // 우선은 토큰 버전을 증가시키지 않음. 추후 고민 필요
     });
 
-    return MemberMapper.toDto(updatedMember);
-    // 추후에는 토큰을 리프레시 해주는 로직도 추가해야 한다.
-    // 그래야 로그인 한 상태의 유저에게 버전이 증가한 토큰을 발급해줄 수 있다.
-    // 현재는 토큰 검증에서 토큰 버전에서 거르기 때문에 재로그인 해야 한다.
+    return { success: true };
   }
 
   /**
-   * members.service.ts 에서 사용하는 메서드
    * 닉네임 변경
    */
-  async updateNickname(member: Member, newNickname: string): Promise<MemberResponseDto> {
+  async updateNickname(member: Member, newNickname: string): Promise<string> {
     // 닉네임 중복 체크
     const isNicknameExists = await this.membersRepository.existsByNickname(newNickname);
     if (isNicknameExists) {
@@ -565,15 +571,15 @@ export class MembersService {
     }
 
     // 닉네임 업데이트
-    const updatedMember = await this.membersRepository.updateMember(member.uuid, {
+    await this.membersRepository.updateMember(member.uuid, {
       nickname: newNickname
     });
 
-    return MemberMapper.toDto(updatedMember);
+    return newNickname;
   }
 
   async getMemberProfile(uuid: string): Promise<MemberProfileDto> {
-    const member = await this.findOneByUuid(uuid);
+    const member = await this.findOneByUuidAsEntity(uuid);
     if (!member) {
       throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
     }
@@ -600,6 +606,30 @@ export class MembersService {
       termsAgreed: member.termsAgreed,
       privacyAgreed: member.privacyAgreed
     };
+  }
+
+  /**
+   * 프로필 이미지 업데이트
+   */
+  async updateProfileImage(
+    member: Member,
+    profileImage: string,
+    size: number,
+    mimeType: string
+  ): Promise<string> {
+    // 파일 크기 검증
+    if (size > FILE_CONSTANTS.PROFILE_IMAGE.MAX_SIZE) {
+      throw new BadRequestException(`이미지 크기는 ${FILE_CONSTANTS.PROFILE_IMAGE.MAX_SIZE / (1024 * 1024)}MB를 초과할 수 없습니다.`);
+    }
+
+    // 파일 형식 검증
+    if (!FILE_CONSTANTS.PROFILE_IMAGE.ALLOWED_TYPES.includes(mimeType)) {
+      throw new BadRequestException('지원되지 않는 이미지 형식입니다.');
+    }
+
+    member.profileImage = profileImage;
+    await this.membersRepository.save(member);
+    return profileImage;
   }
 
 } 
