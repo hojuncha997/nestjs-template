@@ -586,6 +586,8 @@ export class MembersService {
       status: member.status,
       emailVerified: member.emailVerified,
       lastLoginAt: member.lastLoginAt,
+      isSocialMember: member.provider !== AuthProvider.LOCAL,
+      provider: member.provider,
       preferences: member.preferences || {
         language: Language.KO,
         timezone: 'Asia/Seoul',

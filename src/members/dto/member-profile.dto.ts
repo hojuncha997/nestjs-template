@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsObject, IsBoolean, IsEnum, IsNumber, IsDate } from 'class-validator';
-import { Language, Theme, MemberStatus, Notification } from '@common/enums';
+import { Language, Theme, MemberStatus, Notification, AuthProvider } from '@common/enums';
 
 export class MemberProfileDto {
   @ApiProperty({ description: '사용자 이메일' })
@@ -38,6 +38,14 @@ export class MemberProfileDto {
   @IsDate()
   @IsOptional()
   lastLoginAt?: Date;
+
+  @ApiProperty({ description: '소셜 회원 여부' })
+  @IsBoolean()
+  isSocialMember: boolean;
+
+  @ApiProperty({ description: '소셜 로그인 제공자', enum: AuthProvider })
+  @IsEnum(AuthProvider)
+  provider: AuthProvider;
 
   @ApiProperty({ description: '사용자 설정' })
   @IsObject()
