@@ -24,4 +24,5 @@ export interface JwtPayload {
   role: string;
   tokenVersion: number;
   keepLoggedIn: boolean;
+  // iat와 exp는 JWT 표준 클레임(Standard Claims)으로, 라이브러리가 자동으로 처리
 } 
