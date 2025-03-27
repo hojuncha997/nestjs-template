@@ -544,7 +544,7 @@ export class MembersService {
     const updatedMember = await this.membersRepository.updateMember(member.uuid, {
       password: hashedPassword,
       passwordChangedAt: new Date(),
-      tokenVersion: member.tokenVersion + 1  // 기존 토큰 무효화
+      // tokenVersion: member.tokenVersion + 1  // 우선은 토큰 버전을 증가시키지 않음. 추후 고민 필요
     });
 
     return MemberMapper.toDto(updatedMember);

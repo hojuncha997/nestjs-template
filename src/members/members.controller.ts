@@ -239,7 +239,7 @@ export class MembersController {
    * 사용자가 로그인 이후 비밀번호 업데이트
    */
   // @Put('update-password') 명칭을 이렇게 하면 상단의 update로 인식되어 오류 발생.
-  @Put('me/password')
+  @Put('me/update-password')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '비밀번호 업데이트' })
   @ApiResponse({ 

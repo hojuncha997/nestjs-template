@@ -22,11 +22,11 @@ export class UpdatePasswordDto {
     @MinLength(8)
     newPassword: string;
   
-    @ApiProperty({
-        description: '새 비밀번호 확인',
-        example: 'newPassword123'
-    })
-    @IsString()
-    @IsNotEmpty()
-    confirmPassword: string;
+    // @ApiProperty({
+    //     description: '새 비밀번호 확인',
+    //     example: 'newPassword123'
+    // })
+    // @IsString()
+    // @IsNotEmpty()
+    // confirmPassword: string;
 }
