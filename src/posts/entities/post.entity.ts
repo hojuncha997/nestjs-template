@@ -45,12 +45,8 @@ export class Post {
     @JoinColumn({ name: 'author_id' })
     author: Member;
 
-    @Column({ name: 'author_display_name' })
-    author_display_name: string;
-
     @Column({ name: 'current_author_name' })
     current_author_name: string;
-
 
     // 여러 개의 포스트가 하나의 카테고리에 속할 수 있음
     @ManyToOne(() => PostCategory)

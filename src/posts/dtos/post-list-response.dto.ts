@@ -13,9 +13,6 @@ export class PostListResponseDto {
     excerpt: string;  // content 대신 excerpt만 포함
 
     @Expose()
-    author_display_name: string;
-
-    @Expose()
     current_author_name: string;
 
     @Expose()

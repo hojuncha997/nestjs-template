@@ -71,7 +71,8 @@ export class PostsService {
         const queryBuilder = this.postsRepository.createQueryBuilder('post')
             .leftJoinAndSelect('post.stats', 'stats')
             .leftJoinAndSelect('post.meta', 'meta')
-            .leftJoinAndSelect('post.category', 'category');  // 카테고리 조인 추가
+            .leftJoinAndSelect('post.category', 'category')
+            .leftJoinAndSelect('post.author', 'author');  // author 관계 추가
 
 
 
@@ -175,6 +176,13 @@ export class PostsService {
             // TypeORM의 메서드. 쿼리 결과를 엔티티 객체의 배열로 반환
             .getMany();
 
+        // 각 포스트의 current_author_name을 현재 멤버의 닉네임으로 업데이트
+        posts.forEach(post => {
+            if (post.author) {
+                post.current_author_name = post.author.nickname || post.author.email;
+            }
+        });
+
         this.logger.log('---------@@@--found posts:', posts);  // 조회된 포스트 확인
 
         return {
@@ -190,10 +198,16 @@ export class PostsService {
 
     // 내부용 (조회수 증가 없음)
     private async findPostEntityByPublicId(public_id: string) {
-        return await this.postsRepository.findOne({
+        const post = await this.postsRepository.findOne({
             where: { public_id },
-            relations: ['category', 'meta', 'stats', 'author']  // author 관계 추가
+            relations: ['category', 'meta', 'stats', 'author']
         });
+
+        if (post && post.author) {
+            post.current_author_name = post.author.nickname || post.author.email;
+        }
+
+        return post;
     }
 
     // 외부 API용 (조회수 증가 포함)
@@ -209,6 +223,7 @@ export class PostsService {
                 ...postEntity.author,
                 nickname: '[withdrawn member]',
             } as Member;
+            postEntity.current_author_name = '[withdrawn member]';
         }
 
         // 조회수 증가
@@ -243,7 +258,6 @@ export class PostsService {
 
         const displayName = member.nickname || member.email;
         postEntity.author = member;
-        postEntity.author_display_name = displayName;
         postEntity.current_author_name = displayName;
         
         const savedPost = await this.postsRepository.createPost(postEntity);

@@ -15,9 +15,6 @@ export class PostDetailResponseDto {
     content: Record<string, any>;
 
     @Expose()
-    author_display_name: string;
-
-    @Expose()
     current_author_name: string;
 
     @Expose()

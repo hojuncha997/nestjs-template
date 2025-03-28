@@ -116,7 +116,6 @@ export class PostMapper {
         dto.public_id = entity.public_id;
         dto.title = entity.title;
         dto.content = entity.content;
-        dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
         dto.author_uuid = entity.author?.uuid;
         if (entity.category) {
@@ -195,7 +194,6 @@ export class PostMapper {
         dto.public_id = entity.public_id;
         dto.title = entity.title;
         dto.excerpt = entity.meta?.excerpt || this.generateExcerpt(entity.content);
-        dto.author_display_name = entity.author_display_name;
         dto.current_author_name = entity.current_author_name;
         dto.categorySlug = entity.category ? entity.category.slug : '';
         dto.slug = entity.slug;
