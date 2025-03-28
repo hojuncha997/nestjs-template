@@ -46,7 +46,8 @@ export class ProjectsService {
         const queryBuilder = this.projectsRepository.createQueryBuilder('project')
             .leftJoinAndSelect('project.stats', 'stats')
             .leftJoinAndSelect('project.meta', 'meta')
-            .leftJoinAndSelect('project.category', 'category');
+            .leftJoinAndSelect('project.category', 'category')
+            .leftJoinAndSelect('project.author', 'author');
 
         if (query.startDate) {
             queryBuilder.andWhere('project.createdAt >= :startDate', { 
@@ -142,6 +143,13 @@ export class ProjectsService {
 
         this.logger.log('---------@@@--found projects:', projects);
 
+        // 각 프로젝트의 current_author_name을 현재 멤버의 닉네임으로 업데이트
+        projects.forEach(project => {
+            if (project.author) {
+                project.current_author_name = project.author.nickname || project.author.email;
+            }
+        });
+
         return {
             data: this.projectMapper.toListDtoList(projects),
             meta: {
@@ -154,10 +162,16 @@ export class ProjectsService {
     }
 
     private async findProjectEntityByPublicId(public_id: string) {
-        return await this.projectsRepository.findOne({
+        const project = await this.projectsRepository.findOne({
             where: { public_id },
             relations: ['category', 'meta', 'stats', 'author']
         });
+
+        if (project && project.author) {
+            project.current_author_name = project.author.nickname || project.author.email;
+        }
+
+        return project;
     }
 
     async findProjectByPublicId(public_id: string, member?: Member) {
@@ -171,6 +185,7 @@ export class ProjectsService {
                 ...projectEntity.author,
                 nickname: '[withdrawn member]',
             } as Member;
+            projectEntity.current_author_name = '[withdrawn member]';
         }
 
         await this.projectsRepository.incrementViewCount(public_id);
@@ -201,7 +216,6 @@ export class ProjectsService {
 
         const displayName = member.nickname || member.email;
         projectEntity.author = member;
-        projectEntity.author_display_name = displayName;
         projectEntity.current_author_name = displayName;
 
         const savedProject = await this.projectsRepository.createProject(projectEntity);
@@ -256,10 +270,7 @@ export class ProjectsService {
     async updateAuthorDisplayNames(memberId: number, newDisplayName: string) {
         await this.projectsRepository.update(
             { author: { id: memberId } },
-            { 
-                author_display_name: newDisplayName,
-                current_author_name: newDisplayName
-            }
+            { current_author_name: newDisplayName }
         );
     }
 } 

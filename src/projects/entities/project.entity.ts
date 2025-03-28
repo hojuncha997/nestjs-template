@@ -42,9 +42,6 @@ export class Project {
     @JoinColumn({ name: 'author_id' })
     author: Member;
 
-    @Column({ name: 'author_display_name' })
-    author_display_name: string;
-
     @Column({ name: 'current_author_name' })
     current_author_name: string;
 
