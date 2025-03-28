@@ -210,7 +210,7 @@ export class PostsService {
         return post;
     }
 
-    // 외부 API용 (조회수 증가 포함)
+    // 외부 API용 (조회수 증가 없음)
     async findPostByPublicId(public_id: string, member?: Member) {
         const postEntity = await this.findPostEntityByPublicId(public_id);
         if (!postEntity) {
@@ -226,14 +226,24 @@ export class PostsService {
             postEntity.current_author_name = '[withdrawn member]';
         }
 
-        // 조회수 증가
-        await this.postsRepository.incrementViewCount(public_id);
-
         // DTO로 변환
         const postDetailResponseDto = this.postMapper.toDto(postEntity);
         this.logger.log('---------@@@--postDetailResponseDto: ', postDetailResponseDto);
 
         return postDetailResponseDto;
+    }
+
+    // 조회수 증가 전용 메서드
+    async incrementViewCount(public_id: string): Promise<void> {
+        const post = await this.postsRepository.findOne({
+            where: { public_id }
+        });
+
+        if (!post) {
+            throw new NotFoundException(`Post with ID "${public_id}" not found`);
+        }
+
+        await this.postsRepository.incrementViewCount(public_id);
     }
 
     async createPost(createPostDto: CreatePostDto, member: Member): Promise<PostDetailResponseDto> {

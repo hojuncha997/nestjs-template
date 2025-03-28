@@ -138,5 +138,20 @@ export class PostsController {
 
         return await this.postsService.getRelatedPosts(public_id, { limit });
     }
+
+    @Public()
+    @Post(':public_id/views')
+    async incrementViewCount(
+        @Param('public_id') public_id: string
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        await this.postsService.incrementViewCount(public_id);
+        return { success: true };
+    }
    
 }
