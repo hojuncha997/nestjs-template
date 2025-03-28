@@ -188,12 +188,22 @@ export class ProjectsService {
             projectEntity.current_author_name = '[withdrawn member]';
         }
 
-        await this.projectsRepository.incrementViewCount(public_id);
-
         const projectDetailResponseDto = this.projectMapper.toDto(projectEntity);
         this.logger.log('---------@@@--projectDetailResponseDto: ', projectDetailResponseDto);
 
         return projectDetailResponseDto;
+    }
+
+    async incrementViewCount(public_id: string): Promise<void> {
+        const project = await this.projectsRepository.findOne({
+            where: { public_id }
+        });
+
+        if (!project) {
+            throw new NotFoundException(`Project with ID "${public_id}" not found`);
+        }
+
+        await this.projectsRepository.incrementViewCount(public_id);
     }
 
     async createProject(createProjectDto: CreateProjectDto, member: Member): Promise<ProjectDetailResponseDto> {
