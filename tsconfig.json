@@ -17,7 +17,9 @@
       "@decorators/*": ["src/decorators/*"],
       "@posts/*": ["src/posts/*"],
       "@projects/*": ["src/projects/*"],
-      "@category/*": ["src/category/*"]
+      "@category/*": ["src/category/*"],
+      "@guestbook/*": ["src/guestbook.origin/*"],
+      "@guestbook-category/*": ["src/guestbook-category/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

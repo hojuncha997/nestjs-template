@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 import { PostCategory } from '../entities/post-category.entity';
 import { ProjectCategory } from '../entities/project-category.entity';
 import { CategoryResponseDto } from '../dtos/category-response.dto';
-
+import { GuestbookCategory } from '../entities/guestbook-category.entity';
 @Injectable()
 export class CategoryMapper {
-    toDto(category: PostCategory | ProjectCategory): CategoryResponseDto {
+    toDto(category: PostCategory | ProjectCategory | GuestbookCategory): CategoryResponseDto {
         const dto = new CategoryResponseDto();
         dto.id = category.id;
         dto.name = category.name;
@@ -20,7 +20,7 @@ export class CategoryMapper {
         return dto;
     }
 
-    toDtoList(categories: (PostCategory | ProjectCategory)[]): CategoryResponseDto[] {
+    toDtoList(categories: (PostCategory | ProjectCategory | GuestbookCategory)[]): CategoryResponseDto[] {
         return categories.map(category => this.toDto(category));
     }
 } 

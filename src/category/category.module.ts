@@ -10,33 +10,37 @@ import { ProjectCategoryRepository } from './repositories/project-category.repos
 import { CategoryController } from './controllers/category.controller';
 import { CategoryService } from './services/category.service';
 import { CategoryMapper } from './mappers/category.mapper';
-
+import { GuestbookCategoryRepository } from './repositories/guestbook-category.repository';
 @Module({
     imports: [TypeOrmModule.forFeature([PostCategory, ProjectCategory])],
     controllers: [CategoryController],
     providers: [
         CategoryService,
+        CategoryMapper,
         PostCategoryRepository,
         ProjectCategoryRepository,
-        CategoryMapper
+        GuestbookCategoryRepository
     ],
     exports: [
         CategoryService,
         PostCategoryRepository,
-        ProjectCategoryRepository
+        ProjectCategoryRepository,
+        GuestbookCategoryRepository
     ]
 })
 export class CategoryModule implements OnModuleInit {
     constructor(
         private postCategoryRepository: PostCategoryRepository,
-        private projectCategoryRepository: ProjectCategoryRepository
+        private projectCategoryRepository: ProjectCategoryRepository,
+        private guestbookCategoryRepository: GuestbookCategoryRepository
     ) {}
 
     async onModuleInit() {
         // 카테고리 초기화
         await Promise.all([
             this.postCategoryRepository.initializeCategories(),
-            this.projectCategoryRepository.initializeCategories()
+            this.projectCategoryRepository.initializeCategories(),
+            this.guestbookCategoryRepository.initializeCategories()
         ]);
     }
 }

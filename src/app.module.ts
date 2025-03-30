@@ -13,7 +13,7 @@ import databaseConfig from './config/database.config';
 
 import { getTypeOrmConfig } from './config/typeorm.config';
 import { PostsModule } from './posts/posts.module';
-import { GuestbookModule } from './guestbook/guestbook.module';
+import { GuestbooksModule } from './guestbooks/guestbooks.module';
 import { ProjectsModule } from './projects/projects.module';
 
 @Module({
@@ -36,7 +36,7 @@ import { ProjectsModule } from './projects/projects.module';
     // 게시글 모듈
     PostsModule,
     // 방명록 모듈
-    GuestbookModule,
+    GuestbooksModule,
     // 카테고리 모듈
     CategoryModule,
     ProjectsModule,
