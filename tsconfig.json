@@ -10,12 +10,25 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@auth/*": ["src/auth/*"],
+      "@members/*": ["src/members/*"],
+      "@decorators/*": ["src/decorators/*"],
+      "@posts/*": ["src/posts/*"],
+      "@projects/*": ["src/projects/*"],
+      "@category/*": ["src/category/*"],
+      "@guestbook/*": ["src/guestbook.origin/*"],
+      "@guestbook-category/*": ["src/guestbook-category/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    // TypeORM CLI가 데코레이터와 메타데이터를 제대로 처리할 수 있도록 tsconfig.json에 필요한 설정을 추가
+    "noFallthroughCasesInSwitch": false,
+    "strictPropertyInitialization": false
   }
 }

@@ -60,6 +60,17 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+# 개발 환경
+NODE_ENV=development npm run start
+
+# 스테이징 환경
+NODE_ENV=staging npm run start
+
+# 운영 환경
+NODE_ENV=production npm run start
+
+
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

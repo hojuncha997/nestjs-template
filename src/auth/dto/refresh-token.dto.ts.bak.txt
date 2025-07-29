@@ -1,0 +1,18 @@
+// src/auth/dto/refresh-token.dto.ts
+//
+
+import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { ClientType } from '@common/enums/client-type.enum';
+
+export class RefreshTokenDto {
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ required: false })
+  refresh_token?: string;
+
+  @IsOptional()
+  @IsEnum(ClientType)
+  @ApiProperty({ enum: ClientType, required: false })
+  clientType?: ClientType;  // 클라이언트 타입 구분
+}
