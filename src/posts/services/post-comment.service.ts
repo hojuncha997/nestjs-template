@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PostComment } from '../entities/post-comment.entity';
+import { CommentEditHistory } from '../entities/comment-edit-history.entity';
 import { PostStats } from '../entities/post-stats.entity';
 import { PostsRepository } from '../posts.repository';
 import { Member } from '@members/entities/member.entity';
@@ -15,6 +16,8 @@ export class PostCommentService {
   constructor(
     @InjectRepository(PostComment)
     private readonly commentRepository: Repository<PostComment>,
+    @InjectRepository(CommentEditHistory)
+    private readonly commentEditHistoryRepository: Repository<CommentEditHistory>,
     @InjectRepository(PostStats)
     private readonly postStatsRepository: Repository<PostStats>,
     private readonly postsRepository: PostsRepository,
@@ -77,6 +80,13 @@ export class PostCommentService {
     if (comment.memberId !== member.id) {
       throw new ForbiddenException('You can only edit your own comments');
     }
+
+    // Store edit history before updating
+    await this.commentEditHistoryRepository.save({
+      commentId: comment.id,
+      previousContent: comment.content,
+      editedById: member.id,
+    });
 
     comment.content = updateCommentDto.content;
     comment.isEdited = true;

@@ -18,6 +18,7 @@ import { CategoryModule } from '@category/category.module';
 import { PostLike } from './entities/post-like.entity';
 import { PostLikeService } from './services/post-like.service';
 import { PostComment } from './entities/post-comment.entity';
+import { CommentEditHistory } from './entities/comment-edit-history.entity';
 import { PostCommentService } from './services/post-comment.service';
 
 
@@ -28,7 +29,7 @@ import { PostCommentService } from './services/post-comment.service';
         // 즉, forFeature()는 지정된 엔티티들([Post, PostStats, PostMeta])에 대한 Repository를 현재 모듈 스코프에서 사용할 수 있게 등록
         // TypeORM의 Repository 패턴을 NestJS의 DI(의존성 주입) 시스템과 연결
         // 이를 통해 우리는 엔티티에 대한 데이터베이스 작업을 Repository 패턴으로 수행할 수 있음
-        TypeOrmModule.forFeature([Post, PostStats, PostMeta, PostLike, PostComment]),
+        TypeOrmModule.forFeature([Post, PostStats, PostMeta, PostLike, PostComment, CommentEditHistory]),
         MembersModule,
         CategoryModule,
     ],
