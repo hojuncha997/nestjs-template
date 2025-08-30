@@ -1,8 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, BadRequestException, DefaultValuePipe, ParseIntPipe, Logger } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { PostLikeService } from './services/post-like.service';
+import { PostCommentService } from './services/post-comment.service';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
+import { CreateCommentDto } from './dtos/create-comment.dto';
+import { UpdateCommentDto } from './dtos/update-comment.dto';
 import { GetPostsQueryDto } from './dtos/get-post-query.dto';
 import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
@@ -17,8 +20,10 @@ import { ListResponse } from '@common/types/list-response.types';
 export class PostsController {
     private readonly logger = new Logger(PostsController.name);
     constructor(
+        
         private readonly postsService: PostsService,
         private readonly postLikeService: PostLikeService,
+        private readonly postCommentService: PostCommentService,
     ) {}
 
     @Public()
@@ -158,6 +163,25 @@ export class PostsController {
         return { success: true };
     }
 
+    // 좋아요 관련 엔드포인트들
+
+    @Public()
+    @Get(':public_id/likes')
+    async getLikes(
+        @Param('public_id') public_id: string,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+        @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        return await this.postLikeService.getLikesByPost(public_id, limit, offset);
+    }
+
+
     @UseGuards(JwtAuthGuard)
     @Post(':public_id/likes')
     async toggleLike(
@@ -194,12 +218,13 @@ export class PostsController {
         return { isLiked };
     }
 
+    // 댓글 관련 엔드포인트들
     @Public()
-    @Get(':public_id/likes')
-    async getLikes(
+    @Get(':public_id/comments')
+    async getComments(
         @Param('public_id') public_id: string,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number
     ) {
         const decodedPublicId = decodeURIComponent(public_id);
         
@@ -207,7 +232,55 @@ export class PostsController {
             throw new BadRequestException('Invalid public_id format');
         }
 
-        return await this.postLikeService.getLikesByPost(public_id, limit, offset);
+        return await this.postCommentService.getCommentsByPost(public_id, page, limit);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':public_id/comments')
+    async createComment(
+        @Param('public_id') public_id: string,
+        @GetMember() member: Member,
+        @Body() createCommentDto: CreateCommentDto
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        return await this.postCommentService.createComment(public_id, createCommentDto, member);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Put('comments/:commentId')
+    async updateComment(
+        @Param('commentId', ParseIntPipe) commentId: number,
+        @GetMember() member: Member,
+        @Body() updateCommentDto: UpdateCommentDto
+    ) {
+        return await this.postCommentService.updateComment(commentId, updateCommentDto, member);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete('comments/:commentId')
+    async deleteComment(
+        @Param('commentId', ParseIntPipe) commentId: number,
+        @GetMember() member: Member
+    ) {
+        await this.postCommentService.deleteComment(commentId, member);
+        return { success: true };
+    }
+
+    @Public()
+    @Get('comments/:commentId/replies')
+    async getCommentReplies(
+        @Param('commentId', ParseIntPipe) commentId: number,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
+    ) {
+        return await this.postCommentService.getCommentReplies(commentId, page, limit);
+    }
+
+
    
 }
