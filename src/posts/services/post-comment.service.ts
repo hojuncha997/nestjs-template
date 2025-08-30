@@ -97,6 +97,7 @@ export class PostCommentService {
   async deleteComment(commentId: number, member: Member): Promise<void> {
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
+      relations: ['replies'],
     });
 
     if (!comment) {
@@ -107,10 +108,13 @@ export class PostCommentService {
       throw new ForbiddenException('You can only delete your own comments');
     }
 
-    await this.commentRepository.softDelete(commentId);
+    // 모든 삭제를 isDeleted 플래그로 처리 (일관성과 추적성을 위해)
+    comment.isDeleted = true;
+    await this.commentRepository.save(comment);
     
-    // 최상위 댓글(부모 댓글이 없는 경우)만 댓글 수에서 차감
-    if (!comment.parentCommentId) {
+    // 최상위 댓글이고 대댓글이 없는 경우만 댓글 수에서 차감
+    // 대댓글이 있으면 구조 유지를 위해 카운트도 유지
+    if (!comment.parentCommentId && (!comment.replies || comment.replies.length === 0)) {
       await this.updateCommentCount(comment.postId, -1);
     }
   }
@@ -126,26 +130,34 @@ export class PostCommentService {
       throw new NotFoundException('Post not found');
     }
 
-    const [comments, total] = await this.commentRepository
+    const queryBuilder = this.commentRepository
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.member', 'member')
       .leftJoinAndSelect('comment.replies', 'replies')
       .leftJoinAndSelect('replies.member', 'repliesMember')
       .where('comment.postId = :postId', { postId: post.id })
-      .andWhere('comment.parentCommentId IS NULL')
-      .orderBy('comment.createdAt', 'DESC')
-      .take(limit)
-      .skip((page - 1) * limit)
-      .getManyAndCount();
+      .andWhere('comment.parentCommentId IS NULL');
 
-    // 디버깅을 위한 로그
-    this.logger.log('Found comments count:', comments.length);
-    comments.forEach(comment => {
-      this.logger.log(`Comment ID: ${comment.id}, parentCommentId: ${comment.parentCommentId}`);
+    // 전체 댓글 가져오기 (필터링은 메모리에서)
+    const allComments = await queryBuilder
+      .orderBy('comment.createdAt', 'DESC')
+      .getMany();
+
+    // 삭제된 댓글 중 살아있는 대댓글이 없는 것은 필터링
+    const filteredComments = allComments.filter(comment => {
+      if (!comment.isDeleted) return true;
+      
+      // 삭제된 댓글이면 살아있는 대댓글이 있는지 확인
+      const hasActiveReplies = comment.replies?.some(reply => !reply.isDeleted);
+      return hasActiveReplies;
     });
 
+    // 페이지네이션 적용
+    const paginatedComments = filteredComments.slice((page - 1) * limit, page * limit);
+    const total = filteredComments.length;
+
     return {
-      comments: comments.map(comment => this.formatComment(comment)),
+      comments: paginatedComments.map(comment => this.formatComment(comment)),
       meta: {
         total,
         page,
@@ -176,31 +188,52 @@ export class PostCommentService {
   }
 
   private formatComment(comment: PostComment) {
+    const isDeleted = comment.isDeleted || false;
+    
     return {
       id: comment.id,
-      content: comment.content,
-      isEdited: comment.isEdited,
-      likeCount: comment.likeCount,
-      createdAt: comment.createdAt,
-      updatedAt: comment.updatedAt,
-      member: {
+      // 삭제된 댓글은 내용을 서버에서 숨김
+      content: isDeleted ? null : comment.content,
+      isEdited: isDeleted ? false : comment.isEdited,
+      isDeleted,
+      // 삭제된 댓글은 좋아요 수도 숨김
+      likeCount: isDeleted ? 0 : comment.likeCount,
+      // 삭제된 댓글은 시간 정보도 숨김
+      createdAt: isDeleted ? null : comment.createdAt,
+      updatedAt: isDeleted ? null : comment.updatedAt,
+      member: isDeleted ? {
+        // 삭제된 댓글은 작성자 정보도 제한적으로 제공
+        uuid: null,
+        nickname: null,
+        profileImage: null,
+      } : {
         uuid: comment.member.uuid,
         nickname: comment.member.nickname,
         profileImage: comment.member.profileImage,
       },
-      replies: comment.replies?.map(reply => ({
-        id: reply.id,
-        content: reply.content,
-        isEdited: reply.isEdited,
-        likeCount: reply.likeCount,
-        createdAt: reply.createdAt,
-        updatedAt: reply.updatedAt,
-        member: {
-          uuid: reply.member.uuid,
-          nickname: reply.member.nickname,
-          profileImage: reply.member.profileImage,
-        },
-      })) || [],
+      replies: comment.replies?.map(reply => {
+        const replyDeleted = reply.isDeleted || false;
+        return {
+          id: reply.id,
+          content: replyDeleted ? null : reply.content,
+          isEdited: replyDeleted ? false : reply.isEdited,
+          isDeleted: replyDeleted,
+          // 삭제된 대댓글도 좋아요 수 숨김
+          likeCount: replyDeleted ? 0 : reply.likeCount,
+          // 삭제된 대댓글은 시간 정보도 숨김
+          createdAt: replyDeleted ? null : reply.createdAt,
+          updatedAt: replyDeleted ? null : reply.updatedAt,
+          member: replyDeleted ? {
+            uuid: null,
+            nickname: null,
+            profileImage: null,
+          } : {
+            uuid: reply.member.uuid,
+            nickname: reply.member.nickname,
+            profileImage: reply.member.profileImage,
+          },
+        };
+      }) || [],
       replyCount: comment.replies?.length || 0,
     };
   }
