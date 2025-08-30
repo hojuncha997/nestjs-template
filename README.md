@@ -1,5 +1,12 @@
 <p>test</p>
 
+bash# bcrypt 디렉토리로 이동
+cd node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt
+
+node-gyp으로 직접 빌드
+npm install
+npm rebuild
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

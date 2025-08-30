@@ -36,7 +36,7 @@ export const getTypeOrmConfig = async (
             RefreshToken,
         ],
         // 개발 환경에서만 동기화 활성화
-        synchronize: process.env.NODE_ENV !== 'production',
+        synchronize: true, // 일단 강제로 true 설정
         // 모든 테이블 이름을 스네이크 케이스로 변환
         namingStrategy: new SnakeNamingStrategy(),
         // 로깅 설정: 로컬과 개발 환경에서는 쿼리 로깅을 활성화. 운영 환경에서는 오류만 로깅
