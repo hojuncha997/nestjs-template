@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, BadRequestException, DefaultValuePipe, ParseIntPipe, Logger } from '@nestjs/common';
 import { PostsService } from './posts.service';
+import { PostLikeService } from './services/post-like.service';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
 import { GetPostsQueryDto } from './dtos/get-post-query.dto';
@@ -15,7 +16,10 @@ import { ListResponse } from '@common/types/list-response.types';
 // @UseGuards(JwtAuthGuard)
 export class PostsController {
     private readonly logger = new Logger(PostsController.name);
-    constructor(private readonly postsService: PostsService) {}
+    constructor(
+        private readonly postsService: PostsService,
+        private readonly postLikeService: PostLikeService,
+    ) {}
 
     @Public()
     @Get()
@@ -152,6 +156,58 @@ export class PostsController {
 
         await this.postsService.incrementViewCount(public_id);
         return { success: true };
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':public_id/likes')
+    async toggleLike(
+        @Param('public_id') public_id: string,
+        @GetMember() member: Member
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        return await this.postLikeService.toggleLike(public_id, member);
+    }
+
+    @Public()
+    @UseGuards(JwtAuthGuard)
+    @Get(':public_id/likes/status')
+    async getLikeStatus(
+        @Param('public_id') public_id: string,
+        @GetMember(true) member: Member | null
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        if (!member) {
+            return { isLiked: false };
+        }
+
+        const isLiked = await this.postLikeService.checkUserLiked(public_id, member.id);
+        return { isLiked };
+    }
+
+    @Public()
+    @Get(':public_id/likes')
+    async getLikes(
+        @Param('public_id') public_id: string,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+        @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        return await this.postLikeService.getLikesByPost(public_id, limit, offset);
     }
    
 }
