@@ -148,6 +148,28 @@ export class PostsController {
         return await this.postsService.getRelatedPosts(public_id, { limit });
     }
 
+    // 좋아요 상태 조회
+    @Get(':public_id/like-status')
+    @Public()
+    @UseGuards(JwtAuthGuard)
+    async getLikeStatus(
+        @Param('public_id') public_id: string,
+        @GetMember(true) member: Member | null
+    ) {
+        const decodedPublicId = decodeURIComponent(public_id);
+        
+        if (!decodedPublicId?.match(/^[a-z0-9]{10}$/i)) {
+            throw new BadRequestException('Invalid public_id format');
+        }
+
+        if (!member) {
+            return { isLiked: false };
+        }
+
+        const isLiked = await this.postLikeService.checkUserLiked(decodedPublicId, member.id);
+        return { isLiked };
+    }
+
     @Public()
     @Post(':public_id/views')
     async incrementViewCount(
@@ -197,26 +219,6 @@ export class PostsController {
         return await this.postLikeService.toggleLike(public_id, member);
     }
 
-    @Public()
-    @UseGuards(JwtAuthGuard)
-    @Get(':public_id/likes/status')
-    async getLikeStatus(
-        @Param('public_id') public_id: string,
-        @GetMember(true) member: Member | null
-    ) {
-        const decodedPublicId = decodeURIComponent(public_id);
-        
-        if (!public_id?.match(/^[a-z0-9]{10}$/i)) {
-            throw new BadRequestException('Invalid public_id format');
-        }
-
-        if (!member) {
-            return { isLiked: false };
-        }
-
-        const isLiked = await this.postLikeService.checkUserLiked(public_id, member.id);
-        return { isLiked };
-    }
 
     // 댓글 관련 엔드포인트들
     @Public()
