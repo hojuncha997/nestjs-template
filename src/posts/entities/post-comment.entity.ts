@@ -57,6 +57,9 @@ export class PostComment {
   @Column({ name: 'is_deleted', default: false })
   isDeleted: boolean;
 
+  @Column({ name: 'is_secret', default: false })
+  isSecret: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

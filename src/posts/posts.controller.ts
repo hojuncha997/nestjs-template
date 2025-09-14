@@ -222,11 +222,13 @@ export class PostsController {
 
     // 댓글 관련 엔드포인트들
     @Public()
+    @UseGuards(JwtAuthGuard)
     @Get(':public_id/comments')
     async getComments(
         @Param('public_id') public_id: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+        @GetMember(true) member: Member | null
     ) {
         const decodedPublicId = decodeURIComponent(public_id);
         
@@ -234,7 +236,7 @@ export class PostsController {
             throw new BadRequestException('Invalid public_id format');
         }
 
-        return await this.postCommentService.getCommentsByPost(public_id, page, limit);
+        return await this.postCommentService.getCommentsByPost(public_id, page, limit, member);
     }
 
     @UseGuards(JwtAuthGuard)

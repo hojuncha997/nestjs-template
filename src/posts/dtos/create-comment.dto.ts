@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, MinLength, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCommentDto {
@@ -13,4 +13,9 @@ export class CreateCommentDto {
   @IsOptional()
   @IsNumber()
   parentCommentId?: number;
+
+  @ApiProperty({ description: '비밀 댓글 여부', example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isSecret?: boolean;
 }
