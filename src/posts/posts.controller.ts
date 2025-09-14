@@ -220,13 +220,26 @@ export class PostsController {
     }
 
 
-    // 댓글 관련 엔드포인트들
+    /**
+     * 댓글 목록 조회 엔드포인트
+     * 
+     * 인증 처리:
+     * - @Public() + @UseGuards(JwtAuthGuard) 조합으로 선택적 인증 구현
+     * - 로그인하지 않아도 접근 가능 (일반 댓글만 표시)
+     * - 로그인한 경우 토큰으로 사용자 식별 (비밀 댓글 권한 체크)
+     * 
+     * 비밀 댓글 권한:
+     * - 댓글 작성자, 포스트 작성자, 관리자, 부모 댓글 작성자(답글의 경우)
+     * - 권한 없으면 내용이 null로 전송되고 "비밀 댓글입니다" 메시지 표시
+     */
     @Public()
+    @UseGuards(JwtAuthGuard)
     @Get(':public_id/comments')
     async getComments(
         @Param('public_id') public_id: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+        @GetMember(true) member: Member | null // optional member (로그인 선택적)
     ) {
         const decodedPublicId = decodeURIComponent(public_id);
         
@@ -234,7 +247,7 @@ export class PostsController {
             throw new BadRequestException('Invalid public_id format');
         }
 
-        return await this.postCommentService.getCommentsByPost(public_id, page, limit);
+        return await this.postCommentService.getCommentsByPost(public_id, page, limit, member);
     }
 
     @UseGuards(JwtAuthGuard)

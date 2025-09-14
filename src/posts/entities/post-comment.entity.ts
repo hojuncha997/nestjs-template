@@ -57,6 +57,20 @@ export class PostComment {
   @Column({ name: 'is_deleted', default: false })
   isDeleted: boolean;
 
+  /**
+   * 비밀 댓글 여부
+   * 
+   * true인 경우 다음 사용자만 내용을 볼 수 있음:
+   * 1. 댓글 작성자 본인
+   * 2. 포스트 작성자
+   * 3. 관리자 (ADMIN 권한)
+   * 4. 부모 댓글 작성자 (답글인 경우에만 해당)
+   * 
+   * 비밀 댓글의 답글도 독립적으로 비밀 설정 가능
+   */
+  @Column({ name: 'is_secret', default: false })
+  isSecret: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
