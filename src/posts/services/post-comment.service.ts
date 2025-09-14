@@ -8,6 +8,8 @@ import { PostsRepository } from '../posts.repository';
 import { Member } from '@members/entities/member.entity';
 import { CreateCommentDto } from '../dtos/create-comment.dto';
 import { UpdateCommentDto } from '../dtos/update-comment.dto';
+import { NotificationService } from '../../notifications/services/notification.service';
+import { NotificationType } from '@common/enums';
 
 @Injectable()
 export class PostCommentService {
@@ -21,6 +23,7 @@ export class PostCommentService {
     @InjectRepository(PostStats)
     private readonly postStatsRepository: Repository<PostStats>,
     private readonly postsRepository: PostsRepository,
+    private readonly notificationService: NotificationService, // 알림 서비스 주입
   ) {}
 
   /**
@@ -40,6 +43,7 @@ export class PostCommentService {
     createCommentDto: CreateCommentDto,
     member: Member
   ): Promise<PostComment> {
+    // 포스트 조회 (작성자 정보 포함) - PostsRepository의 메서드 사용
     const post = await this.postsRepository.findPostByPublicId(publicId);
     
     if (!post) {
@@ -48,8 +52,10 @@ export class PostCommentService {
 
     let parentComment = null;
     if (createCommentDto.parentCommentId) {
+      // 부모 댓글 조회 (답글인 경우)
       parentComment = await this.commentRepository.findOne({
         where: { id: createCommentDto.parentCommentId },
+        relations: ['member'], // 부모 댓글 작성자 정보 필요
       });
       
       if (!parentComment) {
@@ -57,6 +63,7 @@ export class PostCommentService {
       }
     }
 
+    // 댓글 저장
     const comment = await this.commentRepository.save({
       postId: post.id,
       memberId: member.id,
@@ -64,6 +71,53 @@ export class PostCommentService {
       parentCommentId: createCommentDto.parentCommentId,
       isSecret: createCommentDto.isSecret || false, // 비밀 댓글 설정
     });
+
+    // 알림 생성 로직
+    try {
+      // 케이스 1: 답글인 경우 - 부모 댓글 작성자에게 알림
+      if (parentComment && parentComment.memberId !== member.id) {
+        await this.notificationService.createNotification({
+          recipientId: parentComment.memberId,
+          type: NotificationType.REPLY,
+          title: '답글이 달렸습니다',
+          content: `${member.nickname}님이 회원님의 댓글에 답글을 남겼습니다: "${this.truncateContent(createCommentDto.content)}"`,
+          referenceType: 'POST',
+          referenceId: post.id,
+          referenceUrl: `/posts/${publicId}#comment-${comment.id}`,
+          actorId: member.id,
+        });
+        
+        this.logger.log(`답글 알림 생성: ${parentComment.member.nickname}님에게 알림 전송`);
+      }
+      
+      // 케이스 2: 일반 댓글인 경우 - 포스트 작성자에게 알림
+      // (자기 자신 포스트에는 알림 안보냄, 답글의 경우 이미 위에서 처리했으므로 제외)
+      if (!parentComment && post.author.id !== member.id) {
+        await this.notificationService.createNotification({
+          recipientId: post.author.id,
+          type: NotificationType.COMMENT,
+          title: '새로운 댓글',
+          content: `${member.nickname}님이 "${post.title}" 글에 댓글을 남겼습니다: "${this.truncateContent(createCommentDto.content)}"`,
+          referenceType: 'POST',
+          referenceId: post.id,
+          referenceUrl: `/posts/${publicId}#comment-${comment.id}`,
+          actorId: member.id,
+        });
+        
+        this.logger.log(`댓글 알림 생성: ${post.author.nickname}님에게 알림 전송`);
+      }
+
+      // TODO: 멘션 처리 - 댓글 내용에서 @username 패턴 찾아서 해당 사용자에게 알림
+      // 추후 구현 예정
+      // const mentions = this.extractMentions(createCommentDto.content);
+      // for (const mentionedUser of mentions) {
+      //   await this.notificationService.createNotification({...});
+      // }
+
+    } catch (error) {
+      // 알림 생성 실패는 댓글 작성을 막지 않음 (로그만 남기고 계속 진행)
+      this.logger.error(`알림 생성 실패: ${error.message}`, error.stack);
+    }
 
     // 최상위 댓글(부모 댓글이 없는 경우)만 댓글 수에 포함
     if (!createCommentDto.parentCommentId) {
@@ -74,6 +128,19 @@ export class PostCommentService {
       where: { id: comment.id },
       relations: ['member'],
     });
+  }
+
+  /**
+   * 알림에 표시할 댓글 내용 자르기
+   * 너무 긴 댓글은 알림에서 일부만 표시
+   * 
+   * @param content - 원본 댓글 내용
+   * @returns 잘린 댓글 내용
+   */
+  private truncateContent(content: string): string {
+    const maxLength = 50;
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
   }
 
   async updateComment(

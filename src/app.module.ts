@@ -15,6 +15,7 @@ import { getTypeOrmConfig } from './config/typeorm.config';
 import { PostsModule } from './posts/posts.module';
 import { GuestbooksModule } from './guestbooks/guestbooks.module';
 import { ProjectsModule } from './projects/projects.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -39,7 +40,10 @@ import { ProjectsModule } from './projects/projects.module';
     GuestbooksModule,
     // 카테고리 모듈
     CategoryModule,
+    // 프로젝트 모듈
     ProjectsModule,
+    // 알림 모듈 - 폴링 기반 알림 시스템
+    NotificationsModule,
   ],
 })
 export class AppModule {}

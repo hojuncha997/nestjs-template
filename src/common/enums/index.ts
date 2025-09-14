@@ -8,6 +8,7 @@
 export * from './auth-provider.enum';
 export * from './role.enum';
 export * from './notification.enum';
+export * from './notification-type.enum';
 export * from './language.enum';
 export * from './time-zone.enums';
 export * from './theme.enum';

@@ -20,6 +20,7 @@ import { PostLikeService } from './services/post-like.service';
 import { PostComment } from './entities/post-comment.entity';
 import { CommentEditHistory } from './entities/comment-edit-history.entity';
 import { PostCommentService } from './services/post-comment.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 
 @Module({
@@ -32,6 +33,7 @@ import { PostCommentService } from './services/post-comment.service';
         TypeOrmModule.forFeature([Post, PostStats, PostMeta, PostLike, PostComment, CommentEditHistory]),
         MembersModule,
         CategoryModule,
+        NotificationsModule, // 알림 모듈 추가 - PostCommentService에서 알림 생성 시 필요
     ],
     providers: [
         PostsService,
